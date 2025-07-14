@@ -11,20 +11,27 @@
     <div class="container">
       <div class="header">
         <h1>Sistema de Control de Telares</h1>
+        <span id="fechaInfo" style="font-weight: 600; color: #ffffff"></span>
       </div>
 
       <div class="controls">
-        <label for="filtroTurno">Filtros:</label>
+        <label for="filtroTurno">Filtro por Turno:</label>
         <select id="filtroTurno">
           <option value="todos">Todos</option>
           <option value="1">Mañana</option>
           <option value="2">Tarde</option>
           <option value="3">Noche</option>
-          <option value="eficiencia_baja">Eficiencia &lt; 87</option>
+          <option value="promedio">Promedio por Telar</option>
+        </select>
+        <label for="filtroTipo" style="margin-left: 10px"
+          >Filtro por Tipo:</label
+        >
+        <select id="filtroTipo">
+          <option value="todos">Todos</option>
           <option value="eficiencia_alta">Eficiencia ≥ 87</option>
+          <option value="eficiencia_baja">Eficiencia &lt; 87</option>
           <option value="cmpx_alto">T/P + U/P &gt; 10</option>
           <option value="cmpx_bajo">T/P + U/P ≤ 10</option>
-          <option value="promedio">Promedio por Telar</option>
         </select>
         <input
           type="text"
@@ -33,34 +40,30 @@
           style="width: 250px"
         />
         <button id="btnImprimir" class="btn-imprimir">Imprimir</button>
-        <span
-          id="fechaInfo"
-          style="margin-left: 20px; font-weight: 600; color: #333"
-        ></span>
         <div class="legend">
           <span>
             <span
               class="telar-status-indicator status-eficiencia-alta legend-indicator"
             ></span>
-            Eficiencia alta
+            Eficiencia +
           </span>
           <span>
             <span
               class="telar-status-indicator status-eficiencia-baja legend-indicator"
             ></span>
-            Eficiencia baja
+            Eficiencia -
           </span>
           <span>
             <span
               class="telar-status-indicator status-cmpx-alto legend-indicator"
             ></span>
-            CMPX alto
+            CMPX +
           </span>
           <span>
             <span
               class="telar-status-indicator status-cmpx-bajo legend-indicator"
             ></span>
-            CMPX bajo
+            CMPX -
           </span>
         </div>
       </div>
@@ -73,4 +76,5 @@
     <script src="js/main.js"></script>
   </body>
 </html>
+
 
