@@ -2,19 +2,76 @@
 
 let telares = [];
 let turnoSeleccionado = "todos";
+let tipoSeleccionado = "todos";
+let busquedaIds = []; // Nueva variable para almacenar los IDs de búsqueda
 let primeraFecha = "";
+
+// Función para aplicar filtros en secuencia
+function aplicarFiltros() {
+  let telaresFiltrados = telares;
+
+  // Primero aplicar filtro de turno
+  if (turnoSeleccionado !== "todos") {
+    telaresFiltrados = telaresFiltrados.filter(
+      (telar) => String(telar.turno).trim() === turnoSeleccionado
+    );
+  }
+
+  // Luego aplicar filtro de tipo sobre el resultado anterior
+  if (tipoSeleccionado !== "todos") {
+    switch (tipoSeleccionado) {
+      case "eficiencia_baja":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.eficIp) < 87
+        );
+        break;
+      case "eficiencia_alta":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.eficIp) >= 87
+        );
+        break;
+      case "cmpx_alto":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10
+        );
+        break;
+      case "cmpx_bajo":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
+        );
+        break;
+    }
+  }
+
+  // Finalmente, aplicar filtro de búsqueda por ID
+  if (busquedaIds.length > 0) {
+    telaresFiltrados = telaresFiltrados.filter((telar) =>
+      busquedaIds.includes(String(telar.id))
+    );
+  }
+
+  return telaresFiltrados;
+}
+
+// Función para resetear filtros
+function resetearFiltros() {
+  turnoSeleccionado = "todos";
+  tipoSeleccionado = "todos";
+
+  // Resetear los selects en el HTML
+  const filtroTurno = document.getElementById("filtroTurno");
+  const filtroTipo = document.getElementById("filtroTipo");
+
+  if (filtroTurno) filtroTurno.value = "todos";
+  if (filtroTipo) filtroTipo.value = "todos";
+}
 
 function renderTelares() {
   const grid = document.getElementById("telaresGrid");
   grid.innerHTML = "";
 
-  // Filtrar telares por turno seleccionado
-  let telaresFiltrados = telares;
-  if (turnoSeleccionado !== "todos") {
-    telaresFiltrados = telares.filter(
-      (telar) => String(telar.turno).trim() === turnoSeleccionado
-    );
-  }
+  // Aplicar filtros en secuencia
+  let telaresFiltrados = aplicarFiltros();
 
   telaresFiltrados.forEach((telar) => {
     const telarElement = document.createElement("div");
@@ -118,18 +175,27 @@ document.addEventListener("DOMContentLoaded", function () {
   const filtro = document.getElementById("filtroTurno");
   if (filtro) {
     filtro.addEventListener("change", function () {
+      turnoSeleccionado = this.value;
       if (this.value === "promedio") {
         renderPromedioPorTelar();
-      } else if (this.value === "eficiencia_baja") {
-        renderEficienciaBaja();
-      } else if (this.value === "eficiencia_alta") {
-        renderEficienciaAlta();
-      } else if (this.value === "cmpx_alto") {
-        renderCmpxAlto();
-      } else if (this.value === "cmpx_bajo") {
-        renderCmpxBajo();
       } else {
-        turnoSeleccionado = this.value;
+        renderTelares();
+      }
+    });
+  }
+});
+
+//Manejar el filtro de tipo
+document.addEventListener("DOMContentLoaded", function () {
+  const filtroTipo = document.getElementById("filtroTipo");
+  if (filtroTipo) {
+    filtroTipo.addEventListener("change", function () {
+      tipoSeleccionado = this.value;
+      // Verificar si está en modo promedio o normal
+      const filtroTurno = document.getElementById("filtroTurno");
+      if (filtroTurno && filtroTurno.value === "promedio") {
+        renderPromedioPorTelar();
+      } else {
         renderTelares();
       }
     });
@@ -147,6 +213,8 @@ function renderPromedioPorTelar() {
     agrupados[telar.id].push(telar);
   });
 
+  // Crear array de promedios
+  const telaresPromedio = [];
   Object.keys(agrupados).forEach((id) => {
     const grupo = agrupados[id];
     // Calcular promedios
@@ -156,14 +224,67 @@ function renderPromedioPorTelar() {
       grupo.reduce((s, t) => s + Number(t.cmpxUp), 0) / grupo.length;
     const eficIpProm =
       grupo.reduce((s, t) => s + Number(t.eficIp), 0) / grupo.length;
+
     // Usar datos del primer registro para mostrar info general
     const telar = grupo[0];
 
+    // Crear objeto con promedios
+    telaresPromedio.push({
+      id: telar.id,
+      turno: telar.turno,
+      articulo: telar.articulo,
+      diseño: telar.diseño,
+      rpm: telar.rpm,
+      cmpxTip: cmpxTipProm,
+      cmpxUp: cmpxUpProm,
+      eficIp: eficIpProm,
+    });
+  });
+
+  // Aplicar filtro de tipo a los promedios
+  let telaresFiltrados = telaresPromedio;
+  if (tipoSeleccionado !== "todos") {
+    switch (tipoSeleccionado) {
+      case "eficiencia_baja":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.eficIp) < 87
+        );
+        break;
+      case "eficiencia_alta":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.eficIp) >= 87
+        );
+        break;
+      case "cmpx_alto":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10
+        );
+        break;
+      case "cmpx_bajo":
+        telaresFiltrados = telaresFiltrados.filter(
+          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
+        );
+        break;
+    }
+  }
+
+  // Aplicar filtro de búsqueda por ID a los promedios
+  if (busquedaIds.length > 0) {
+    telaresFiltrados = telaresFiltrados.filter((telar) =>
+      busquedaIds.includes(String(telar.id))
+    );
+  }
+
+  telaresFiltrados.forEach((telar) => {
     const telarElement = document.createElement("div");
     telarElement.className = "telar";
     telarElement.innerHTML = `
       <div class="telar-status">
-        ${getStatusIndicatorsPromedio(eficIpProm, cmpxTipProm, cmpxUpProm)}
+        ${getStatusIndicatorsPromedio(
+          telar.eficIp,
+          telar.cmpxTip,
+          telar.cmpxUp
+        )}
       </div>
       <div class="telar-header">
           <div class="telar-id">${telar.id}</div>
@@ -182,15 +303,15 @@ function renderPromedioPorTelar() {
       <div class="parametros">
           <div class="parametro cmpx-tip">
               <div>CMPX T/P</div>
-              <div>${cmpxTipProm.toFixed(2)}</div>
+              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
           </div>
           <div class="parametro cmpx-up">
               <div>CMPX U/P</div>
-              <div>${cmpxUpProm.toFixed(2)}</div>
+              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
           </div>
           <div class="parametro efic-ip">
               <div>EFIC. /P</div>
-              <div>${eficIpProm.toFixed(2)}</div>
+              <div>${Number(telar.eficIp).toFixed(2)}</div>
           </div>
       </div>
     `;
@@ -479,25 +600,17 @@ document.addEventListener("DOMContentLoaded", function () {
     busqueda.addEventListener("input", function () {
       const valor = this.value.trim();
       if (valor.length === 0) {
-        // Si está vacío, renderiza según el filtro actual
-        const filtro = document.getElementById("filtroTurno").value;
-        if (filtro === "promedio") {
-          renderPromedioPorTelar();
-        } else if (filtro === "eficiencia_baja") {
-          renderEficienciaBaja();
-        } else if (filtro === "cmpx_alto") {
-          renderCmpxAlto();
-        } else if (this.value === "cmpx_bajo") {
-          renderCmpxBajo();
-        }        
-         else {
-          turnoSeleccionado = filtro;
-          renderTelares();
-        }
+        busquedaIds = []; // Limpiar IDs de búsqueda si el campo está vacío
       } else {
-        // Buscar por IDs separados por coma
-        const ids = valor.split(",");
-        renderBusquedaPorId(ids);
+        busquedaIds = valor.split(",").map((id) => id.trim()); // Actualizar IDs de búsqueda
+      }
+
+      // Renderizar según el filtro actual (promedio o normal)
+      const filtroTurno = document.getElementById("filtroTurno");
+      if (filtroTurno && filtroTurno.value === "promedio") {
+        renderPromedioPorTelar();
+      } else {
+        renderTelares();
       }
     });
   }
@@ -506,31 +619,47 @@ document.addEventListener("DOMContentLoaded", function () {
 function getStatusIndicators(telar) {
   const indicators = [];
   if (Number(telar.eficIp) < 87) {
-    indicators.push('<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>'
+    );
   } else {
-    indicators.push('<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>'
+    );
   }
   if (Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10) {
-    indicators.push('<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>'
+    );
   } else {
-    indicators.push('<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>'
+    );
   }
-  return indicators.join('');
+  return indicators.join("");
 }
 
 function getStatusIndicatorsPromedio(eficIpProm, cmpxTipProm, cmpxUpProm) {
   const indicators = [];
   if (eficIpProm < 87) {
-    indicators.push('<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>'
+    );
   } else {
-    indicators.push('<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>'
+    );
   }
   if (cmpxTipProm + cmpxUpProm > 10) {
-    indicators.push('<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>'
+    );
   } else {
-    indicators.push('<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>');
+    indicators.push(
+      '<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>'
+    );
   }
-  return indicators.join('');
+  return indicators.join("");
 }
 
 function excelDateToYMD(serial) {
@@ -541,7 +670,8 @@ function excelDateToYMD(serial) {
   const date = new Date(excelEpoch.getTime() + ms);
   // Formato YYYYMMDD
   const yyyy = date.getUTCFullYear();
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(date.getUTCDate()).padStart(2, '0');
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
   return `${yyyy}/${mm}/${dd}`;
 }
+
