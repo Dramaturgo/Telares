@@ -16,6 +16,13 @@ body {
   margin: 0 auto;
 }
 
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centra horizontalmente los elementos hijos */
+  margin-bottom: 20px;
+}
+
 .header h1 {
   font-size: 1.5em;
   margin-bottom: 10px;
@@ -26,31 +33,33 @@ body {
 
 .controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  justify-content: flex-start; /* Volver a flex-start para un control más predecible */
+  gap: 15px; /* Espacio entre elementos */
   background: linear-gradient(90deg, #f8fafc 80%, #e0e7ff 100%);
   border-radius: 14px;
   box-shadow: 0 2px 12px rgba(76, 62, 202, 0.08);
-  padding: 18px 28px;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  font-size: 16px;
+  padding: 15px 25px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
   margin-bottom: 28px;
-  flex-wrap: wrap;
 }
 
 .controls label {
   font-weight: 700;
   color: #3b3b3b;
-  margin-right: 8px;
+  margin-right: 5px; /* Ajustar margen */
   letter-spacing: 0.5px;
+  font-size: 14px; /* Reducir el tamaño de la fuente */
 }
 
 .controls select,
 .controls input[type="text"] {
   border: 1px solid #bfc9d9;
   border-radius: 6px;
-  padding: 7px 14px;
-  font-size: 15px;
+  padding: 6px 12px; /* Reducir el padding */
+  font-size: 13px; /* Reducir el tamaño de la fuente */
   background: #fff;
   color: #2c3e50;
   outline: none;
@@ -65,10 +74,11 @@ body {
 
 .controls .legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px; /* Reducir el espacio entre elementos de la leyenda */
   margin-left: auto;
-   flex-wrap: wrap;
+  font-size: 13px; /* Reducir el tamaño de la fuente de la leyenda */
 }
 
 .telares-grid {
@@ -174,11 +184,9 @@ body {
 }
 
 .turno-indicator {
- text-align: center;
- font-size: 11px;
+  text-align: center;
+  font-size: 11px;
 }
-
-
 
 /* Indicadores de estado para telares */
 .telar-status {
@@ -211,6 +219,8 @@ body {
 .telar-status-indicator {
   width: 10px;
   height: 10px;
+  min-width: 10px; /* Asegura que el ancho mínimo sea 10px */
+  min-height: 10px; /* Asegura que la altura mínima sea 10px */
   border-radius: 50%;
   animation: pulse 2s infinite;
   display: inline-block;
@@ -336,28 +346,50 @@ body {
   animation: none !important;
   display: inline-block;
   vertical-align: middle;
+  width: 10px !important; /* Asegura el ancho del indicador */
+  height: 10px !important; /* Asegura la altura del indicador */
+  border-radius: 50% !important; /* Asegura la forma de círculo */
 }
 
 /* Responsive: apila los controles en pantallas pequeñas */
 @media (max-width: 900px) {
   .controls {
     flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 10px;
-  }
-  .controls .legend {
-    margin-left: 0;
-    justify-content: flex-start;
+    align-items: center; /* Hace que los elementos hijos se estiren para llenar el ancho */
     gap: 10px;
+    padding: 12px;
   }
-  .controls label {
-    margin-bottom: 4px;
-  }
+
+  .controls label,
   .controls select,
-  .controls input[type="text"] {
+  .controls input[type="text"],
+  .controls button {
+  }
+
+  .controls label {
+    margin-right: 0;
+    width: 100%; /* Asegurar que el label ocupe su propia línea */
+  }
+
+  .controls select,
+  .controls input[type="text"],
+  .controls button {
+    width: 100%; /* Asegurar que los inputs y botones ocupen todo el ancho */
+  }
+
+  .controls .legend {
+    flex-direction: column;
+    align-items: flex-start; /* Centra los elementos de la leyenda */
+    margin-left: 0;
     width: 100%;
-    min-width: 0;
-    margin-bottom: 4px;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .controls .legend span {
+    width: auto; /* Permitir que los spans de la leyenda tomen su ancho natural */
+    display: inline-flex; /* Usar inline-flex para mantener el comportamiento en línea y alinear el contenido */
+    align-items: center;
+    gap: 5px; /* Espacio entre el indicador y el texto */
   }
 }
