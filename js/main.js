@@ -1,6 +1,7 @@
 // Elimina los datos de ejemplo y la función actualizarDatos
 
 let telares = [];
+let ocurrenciasData = []; // Nueva variable para almacenar los datos de Data2.xlsx
 let turnoSeleccionado = "todos";
 let tipoSeleccionado = "todos";
 let busquedaIds = []; // Nueva variable para almacenar los IDs de búsqueda
@@ -16,6 +17,7 @@ function aplicarFiltros() {
       (telar) => String(telar.turno).trim() === turnoSeleccionado
     );
   }
+
 
   // Luego aplicar filtro de tipo sobre el resultado anterior
   if (tipoSeleccionado !== "todos") {
@@ -39,6 +41,18 @@ function aplicarFiltros() {
         telaresFiltrados = telaresFiltrados.filter(
           (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
         );
+        break;
+      case "con_ocurrencias":
+        if (turnoSeleccionado !== "promedio") {
+          telaresFiltrados = telaresFiltrados.filter((telar) => {
+            const hasOcurrencias = ocurrenciasData.some(
+              (item) =>
+                String(item.Telar) === String(telar.id) &&
+                String(item.Turno) === String(telar.turno)
+            );
+            return hasOcurrencias;
+          });
+        }
         break;
     }
   }
@@ -76,6 +90,31 @@ function renderTelares() {
   telaresFiltrados.forEach((telar) => {
     const telarElement = document.createElement("div");
     telarElement.className = "telar";
+    const telarOcurrencias = ocurrenciasData.filter(
+      (item) =>
+        String(item.Telar) === String(telar.id) &&
+        String(item.Turno) === String(telar.turno)
+    );
+
+    let ocurrenciasHtml = "";
+    if (
+      tipoSeleccionado === "con_ocurrencias" &&
+      turnoSeleccionado !== "promedio" &&
+      telarOcurrencias.length > 0
+    ) {
+      ocurrenciasHtml = `
+        <div class="ocurrencias-info">
+          <h4>Ocurrencias:</h4>
+          ${telarOcurrencias
+            .map(
+              (oc) =>
+                `<p><strong>Ocurrencia:</strong> ${oc.Ocurrencia} - <strong>Tiempo:</strong> ${Number(oc.Tiempo).toFixed(2)}</p>`
+            )
+            .join("")}
+        </div>
+      `;
+    }
+
     telarElement.innerHTML = `
       <div class="telar-status">
         ${getStatusIndicators(telar)}
@@ -109,42 +148,61 @@ function renderTelares() {
           </div>
       </div>
       <div class="turno-indicator">${telar.turno}</div>
+      ${ocurrenciasHtml}
     `;
     grid.appendChild(telarElement);
   });
 }
 
+// Cargar los datos de Data.xlsx desde el servidor
 function cargarExcelDesdeServidor() {
   fetch("Data.xlsx")
+  .then((response) => response.arrayBuffer())
+  .then((data) => {
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    telares = [];
+    primeraFecha = ""; // Reinicia por si recargas
+    json.forEach((row, idx) => {
+      if (!primeraFecha && row.Fecha) {
+        primeraFecha = row.Fecha;
+      }
+      telares.push({
+        id: row.Telar,
+        turno: row.Turno,
+        articulo: row.Articulo,
+        diseño: row.Diseño || "",
+        rpm: row.VelocidadTelar || 0,
+        cmpxTip: row.TiempoparoManual || row["CmpxParoxTrama"] || 0,
+        cmpxUp: row.TiempoparoxTrama || row["CmpxParoxUrdimbre"] || 0,
+        eficIp: row.EficienciaMaqTiempo || 0,
+      });
+    });
+    renderFechaEnControles();
+    renderTelares();
+  })
+  .catch((err) => {
+    console.error("No se pudo cargar Data.xlsx:", err);
+  });
+}
+
+
+
+function cargarOcurrenciasDesdeServidor() {
+  fetch("Data2.xlsx")
     .then((response) => response.arrayBuffer())
     .then((data) => {
       const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(sheet);
-
-      telares = [];
-      primeraFecha = ""; // Reinicia por si recargas
-      json.forEach((row, idx) => {
-        if (!primeraFecha && row.Fecha) {
-          primeraFecha = row.Fecha;
-        }
-        telares.push({
-          id: row.Telar,
-          turno: row.Turno,
-          articulo: row.Articulo,
-          diseño: row.Diseño || "",
-          rpm: row.VelocidadTelar || 0,
-          cmpxTip: row.TiempoparoManual || row["CmpxParoxTrama"] || 0,
-          cmpxUp: row.TiempoparoxTrama || row["CmpxParoxUrdimbre"] || 0,
-          eficIp: row.EficienciaMaqTiempo || 0,
-        });
-      });
-      renderFechaEnControles();
-      renderTelares();
+      ocurrenciasData = XLSX.utils.sheet_to_json(sheet);
+      // No renderizar aquí, se hará cuando se apliquen los filtros
     })
     .catch((err) => {
-      console.error("No se pudo cargar Data.xls:", err);
+      console.error("No se pudo cargar Data2.xlsx:", err);
     });
 }
 
@@ -164,17 +222,21 @@ function renderFechaEnControles() {
   }
 }
 
-// Llama a la función al iniciar
+// Llama a las funciones al iniciar
 cargarExcelDesdeServidor();
+cargarOcurrenciasDesdeServidor();
 
 // Inicializar la aplicación
 renderTelares();
 
-// Manejar cambio de filtro de turno
 document.addEventListener("DOMContentLoaded", function () {
-  const filtro = document.getElementById("filtroTurno");
-  if (filtro) {
-    filtro.addEventListener("change", function () {
+  const filtroTurno = document.getElementById("filtroTurno");
+  const filtroTipo = document.getElementById("filtroTipo");
+  const busquedaTelar = document.getElementById("busquedaTelar");
+  const btnImprimir = document.getElementById("btnImprimir");
+
+  if (filtroTurno) {
+    filtroTurno.addEventListener("change", function () {
       turnoSeleccionado = this.value;
       if (this.value === "promedio") {
         renderPromedioPorTelar();
@@ -183,22 +245,66 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
-});
 
-//Manejar el filtro de tipo
-document.addEventListener("DOMContentLoaded", function () {
-  const filtroTipo = document.getElementById("filtroTipo");
   if (filtroTipo) {
     filtroTipo.addEventListener("change", function () {
       tipoSeleccionado = this.value;
       // Verificar si está en modo promedio o normal
-      const filtroTurno = document.getElementById("filtroTurno");
       if (filtroTurno && filtroTurno.value === "promedio") {
         renderPromedioPorTelar();
       } else {
         renderTelares();
       }
     });
+  }
+
+  if (busquedaTelar) {
+    busquedaTelar.addEventListener("input", function () {
+      const valor = this.value.trim();
+      if (valor.length === 0) {
+        busquedaIds = []; // Limpiar IDs de búsqueda si el campo está vacío
+      } else {
+        busquedaIds = valor.split(",").map((id) => id.trim()); // Actualizar IDs de búsqueda
+      }
+
+      // Renderizar según el filtro actual (promedio o normal)
+      if (filtroTurno && filtroTurno.value === "promedio") {
+        renderPromedioPorTelar();
+      } else {
+        renderTelares();
+      }
+    });
+  }
+
+  if (btnImprimir) {
+    btnImprimir.onclick = function () {
+      const grid = document.getElementById("telaresGrid");
+      const ventana = window.open("", "", "width=900,height=700");
+      ventana.document.write(`
+        <html>
+          <head>
+            <title>Imprimir Telares</title>
+            <link rel="stylesheet" href="css/styles.css" />
+            <style>
+              body { background: #f8fafc; margin: 0; }
+              .container { box-shadow: none; }
+            </style>
+          </head>
+          <body>
+            <div class="telares-grid">
+              ${grid.innerHTML}
+            </div>
+          </body>
+        </html>
+      `);
+      ventana.document.close();
+      // Espera a que la hoja de estilos se cargue antes de imprimir
+      ventana.onload = function () {
+        ventana.focus();
+        ventana.print();
+        ventana.close();
+      };
+    };
   }
 });
 
@@ -265,6 +371,9 @@ function renderPromedioPorTelar() {
           (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
         );
         break;
+      case "con_ocurrencias":
+        // El filtro de ocurrencias no aplica en la vista de promedio
+        break;
     }
   }
 
@@ -318,303 +427,6 @@ function renderPromedioPorTelar() {
     grid.appendChild(telarElement);
   });
 }
-
-// Nueva función para mostrar solo telares con eficIp < 87
-function renderEficienciaBaja() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
-  const telaresFiltrados = telares.filter((telar) => Number(telar.eficIp) < 87);
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-      <div class="turno-indicator">${telar.turno}</div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-// Nueva función para mostrar solo telares con eficIp >= 87
-function renderEficienciaAlta() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
-  const telaresFiltrados = telares.filter(
-    (telar) => Number(telar.eficIp) >= 87
-  );
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-      <div class="turno-indicator">${telar.turno}</div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-// Nueva función para mostrar solo telares con cmpxTip + cmpxUp > 10
-function renderCmpxAlto() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
-  const telaresFiltrados = telares.filter(
-    (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10
-  );
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-      <div class="turno-indicator">${telar.turno}</div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-// Nueva función para mostrar solo telares con cmpxTip + cmpxUp <= 10
-function renderCmpxBajo() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
-  const telaresFiltrados = telares.filter(
-    (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
-  );
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-      <div class="turno-indicator">${telar.turno}</div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-// Nueva función para buscar por IDs
-function renderBusquedaPorId(ids) {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
-  const idsBuscados = ids.map((id) => id.trim());
-  const telaresFiltrados = telares.filter((telar) =>
-    idsBuscados.includes(String(telar.id))
-  );
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-      <div class="turno-indicator">${telar.turno}</div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-// Imprimir el reporte
-document.addEventListener("DOMContentLoaded", function () {
-  const btnImprimir = document.getElementById("btnImprimir");
-  if (btnImprimir) {
-    btnImprimir.onclick = function () {
-      const grid = document.getElementById("telaresGrid");
-      const ventana = window.open("", "", "width=900,height=700");
-      ventana.document.write(`
-        <html>
-          <head>
-            <title>Imprimir Telares</title>
-            <link rel="stylesheet" href="css/styles.css" />
-            <style>
-              body { background: #f8fafc; margin: 0; }
-              .container { box-shadow: none; }
-            </style>
-          </head>
-          <body>
-            <div class="telares-grid">
-              ${grid.innerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      ventana.document.close();
-      // Espera a que la hoja de estilos se cargue antes de imprimir
-      ventana.onload = function () {
-        ventana.focus();
-        ventana.print();
-        ventana.close();
-      };
-    };
-  }
-});
-
-// Evento para la barra de búsqueda
-document.addEventListener("DOMContentLoaded", function () {
-  const busqueda = document.getElementById("busquedaTelar");
-  if (busqueda) {
-    busqueda.addEventListener("input", function () {
-      const valor = this.value.trim();
-      if (valor.length === 0) {
-        busquedaIds = []; // Limpiar IDs de búsqueda si el campo está vacío
-      } else {
-        busquedaIds = valor.split(",").map((id) => id.trim()); // Actualizar IDs de búsqueda
-      }
-
-      // Renderizar según el filtro actual (promedio o normal)
-      const filtroTurno = document.getElementById("filtroTurno");
-      if (filtroTurno && filtroTurno.value === "promedio") {
-        renderPromedioPorTelar();
-      } else {
-        renderTelares();
-      }
-    });
-  }
-});
 
 function getStatusIndicators(telar) {
   const indicators = [];
@@ -674,4 +486,3 @@ function excelDateToYMD(serial) {
   const dd = String(date.getUTCDate()).padStart(2, "0");
   return `${yyyy}/${mm}/${dd}`;
 }
-
