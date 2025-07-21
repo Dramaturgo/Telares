@@ -10,18 +10,55 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>Sistema de Control de Telares</h1>
+        <h1>MONITOR DE TELARES</h1>
         <span id="fechaInfo" style="font-weight: 600; color: #ffffff"></span>
+        <br />
+        <div class="legend">
+          <span style="font-weight: 600; color: #ffffff">
+            <span
+              class="telar-status-indicator status-eficiencia-alta legend-indicator"
+            ></span>
+            Eficiencia +
+          </span>
+          <span style="font-weight: 600; color: #ffffff">
+            <span
+              class="telar-status-indicator status-eficiencia-baja legend-indicator"
+            ></span>
+            Eficiencia -
+          </span>
+          <span style="font-weight: 600; color: #ffffff">
+            <span
+              class="telar-status-indicator status-cmpx-alto legend-indicator"
+            ></span>
+            CMPX +
+          </span>
+          <span style="font-weight: 600; color: #ffffff">
+            <span
+              class="telar-status-indicator status-cmpx-bajo legend-indicator"
+            ></span>
+            CMPX -
+          </span>
+        </div>
       </div>
 
       <div class="controls">
+        <div id="dropZone">
+          <p>
+            Arrastra y suelta un archivo .xlsm aquí o haz clic para seleccionar
+          </p>
+          <input
+            type="file"
+            id="fileInput"
+            accept=".xlsm"
+            style="display: none"
+          />
+        </div>
         <label for="filtroTurno">Filtro por Turno:</label>
         <select id="filtroTurno">
           <option value="todos">Todos</option>
           <option value="1">Mañana</option>
           <option value="2">Tarde</option>
           <option value="3">Noche</option>
-          <option value="promedio">Promedio por Telar</option>
         </select>
         <label for="filtroTipo" style="margin-left: 10px"
           >Filtro por Tipo:</label
@@ -37,36 +74,26 @@
         <input
           type="text"
           id="busquedaTelar"
-          placeholder="Buscar por ID (ej: 101,102)"
-          style="width: 250px"
+          placeholder="ID (ej: 101,102)"
+          style="width: 200px"
         />
-        <button id="btnImprimir" class="btn-imprimir">Imprimir</button>
-        <div class="legend">
-          <span>
-            <span
-              class="telar-status-indicator status-eficiencia-alta legend-indicator"
-            ></span>
-            Eficiencia +
-          </span>
-          <span>
-            <span
-              class="telar-status-indicator status-eficiencia-baja legend-indicator"
-            ></span>
-            Eficiencia -
-          </span>
-          <span>
-            <span
-              class="telar-status-indicator status-cmpx-alto legend-indicator"
-            ></span>
-            CMPX +
-          </span>
-          <span>
-            <span
-              class="telar-status-indicator status-cmpx-bajo legend-indicator"
-            ></span>
-            CMPX -
-          </span>
+        <input
+          type="text"
+          id="busquedaCodigoOcurrencia"
+          placeholder="Ocurrencia (ej: 409,410)"
+          style="width: 200px; margin-left: 10px; display: none"
+        />
+        <div>
+          <input
+            type="checkbox"
+            id="togglePromedio"
+            style="margin-left: 10px"
+          />
+          <label for="togglePromedio">Promedio</label>
         </div>
+        <button id="btnImprimir" class="btn-imprimir" style="margin-left: auto">
+          Imprimir
+        </button>
       </div>
 
       <div class="telares-grid" id="telaresGrid">
@@ -77,5 +104,3 @@
     <script src="js/main.js"></script>
   </body>
 </html>
-
-
