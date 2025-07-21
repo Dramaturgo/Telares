@@ -5,7 +5,9 @@ let ocurrenciasData = []; // Nueva variable para almacenar los datos de Data2.xl
 let turnoSeleccionado = "todos";
 let tipoSeleccionado = "todos";
 let busquedaIds = []; // Nueva variable para almacenar los IDs de búsqueda
+let busquedaCodigosOcurrencia = []; // Nueva variable para almacenar los códigos de ocurrencia de búsqueda
 let primeraFecha = "";
+let mostrarPromedio = false;
 
 // Función para aplicar filtros en secuencia
 function aplicarFiltros() {
@@ -17,7 +19,6 @@ function aplicarFiltros() {
       (telar) => String(telar.turno).trim() === turnoSeleccionado
     );
   }
-
 
   // Luego aplicar filtro de tipo sobre el resultado anterior
   if (tipoSeleccionado !== "todos") {
@@ -47,8 +48,8 @@ function aplicarFiltros() {
           telaresFiltrados = telaresFiltrados.filter((telar) => {
             const hasOcurrencias = ocurrenciasData.some(
               (item) =>
-                String(item.Telar) === String(telar.id) &&
-                String(item.Turno) === String(telar.turno)
+                String(item.telar) === String(telar.id) &&
+                String(item.turno) === String(telar.turno)
             );
             return hasOcurrencias;
           });
@@ -62,6 +63,19 @@ function aplicarFiltros() {
     telaresFiltrados = telaresFiltrados.filter((telar) =>
       busquedaIds.includes(String(telar.id))
     );
+  }
+
+  // Aplicar filtro de búsqueda por código de ocurrencia
+  if (busquedaCodigosOcurrencia.length > 0) {
+    telaresFiltrados = telaresFiltrados.filter((telar) => {
+      const hasMatchingOcurrencia = ocurrenciasData.some(
+        (item) =>
+          String(item.telar) === String(telar.id) &&
+          String(item.turno) === String(telar.turno) &&
+          busquedaCodigosOcurrencia.includes(String(item.codigo))
+      );
+      return hasMatchingOcurrencia;
+    });
   }
 
   return telaresFiltrados;
@@ -92,8 +106,8 @@ function renderTelares() {
     telarElement.className = "telar";
     const telarOcurrencias = ocurrenciasData.filter(
       (item) =>
-        String(item.Telar) === String(telar.id) &&
-        String(item.Turno) === String(telar.turno)
+        String(item.telar) === String(telar.id) &&
+        String(item.turno) === String(telar.turno)
     );
 
     let ocurrenciasHtml = "";
@@ -108,7 +122,11 @@ function renderTelares() {
           ${telarOcurrencias
             .map(
               (oc) =>
-                `<p><strong>Ocurrencia:</strong> ${oc.Ocurrencia} - <strong>Tiempo:</strong> ${Number(oc.Tiempo).toFixed(2)}</p>`
+                `<p><strong>Descripción:</strong> ${oc.descripcion} (${
+                  oc.codigo
+                }) - <strong>Duración:</strong> ${Number(oc.duracion).toFixed(
+                  2
+                )}</p>`
             )
             .join("")}
         </div>
@@ -154,56 +172,49 @@ function renderTelares() {
   });
 }
 
-// Cargar los datos de Data.xlsx desde el servidor
-function cargarExcelDesdeServidor() {
-  fetch("Data.xlsx")
-  .then((response) => response.arrayBuffer())
-  .then((data) => {
-    const workbook = XLSX.read(data, { type: "array" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(sheet);
+function processData(data) {
+  const workbook = XLSX.read(data, { type: "array" });
 
-    telares = [];
-    primeraFecha = ""; // Reinicia por si recargas
-    json.forEach((row, idx) => {
-      if (!primeraFecha && row.Fecha) {
-        primeraFecha = row.Fecha;
-      }
-      telares.push({
-        id: row.Telar,
-        turno: row.Turno,
-        articulo: row.Articulo,
-        diseño: row.Diseño || "",
-        rpm: row.VelocidadTelar || 0,
-        cmpxTip: row.TiempoparoManual || row["CmpxParoxTrama"] || 0,
-        cmpxUp: row.TiempoparoxTrama || row["CmpxParoxUrdimbre"] || 0,
-        eficIp: row.EficienciaMaqTiempo || 0,
-      });
+  // Cargar datos de Data.xlsx (segunda hoja, índice 1)
+  const sheetName1 = workbook.SheetNames[1]; // Segunda hoja (índice 1)
+  const sheet1 = workbook.Sheets[sheetName1];
+  const json1 = XLSX.utils.sheet_to_json(sheet1);
+
+  telares = [];
+  primeraFecha = ""; // Reinicia por si recargas
+  json1.forEach((row, idx) => {
+    if (!primeraFecha && row.Fecha) {
+      primeraFecha = row.Fecha;
+    }
+    telares.push({
+      id: row.Telar,
+      turno: row.Turno,
+      articulo: row.Articulo,
+      diseño: row.Diseño || "",
+      rpm: row.VelocidadTelar || 0,
+      cmpxTip: row.TiempoparoManual || row["CmpxParoxTrama"] || 0,
+      cmpxUp: row.TiempoparoxTrama || row["CmpxParoxUrdimbre"] || 0,
+      eficIp: row.EficienciaMaqTiempo || 0,
     });
-    renderFechaEnControles();
-    renderTelares();
-  })
-  .catch((err) => {
-    console.error("No se pudo cargar Data.xlsx:", err);
   });
+
+  // Cargar datos de Data2.xlsx (tercera hoja, índice 2)
+  const sheetName2 = workbook.SheetNames[2]; // Tercera hoja (índice 2)
+  const sheet2 = workbook.Sheets[sheetName2];
+  ocurrenciasData = XLSX.utils.sheet_to_json(sheet2);
+
+  renderFechaEnControles();
+  renderTelares();
 }
 
-
-
-function cargarOcurrenciasDesdeServidor() {
-  fetch("Data2.xlsx")
-    .then((response) => response.arrayBuffer())
-    .then((data) => {
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      ocurrenciasData = XLSX.utils.sheet_to_json(sheet);
-      // No renderizar aquí, se hará cuando se apliquen los filtros
-    })
-    .catch((err) => {
-      console.error("No se pudo cargar Data2.xlsx:", err);
-    });
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const data = new Uint8Array(e.target.result);
+    sessionStorage.setItem("fileData", JSON.stringify(Array.from(data)));
+    processData(data);
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // Muestra la fecha en el div de controles
@@ -218,27 +229,71 @@ function renderFechaEnControles() {
         fechaFormateada = primeraFecha;
       }
     }
-    fechaDiv.textContent = fechaFormateada ? `Fecha: ${fechaFormateada}` : "";
+    fechaDiv.textContent = fechaFormateada ? `${fechaFormateada}` : "";
   }
 }
-
-// Llama a las funciones al iniciar
-cargarExcelDesdeServidor();
-cargarOcurrenciasDesdeServidor();
 
 // Inicializar la aplicación
 renderTelares();
 
 document.addEventListener("DOMContentLoaded", function () {
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("fileInput");
   const filtroTurno = document.getElementById("filtroTurno");
   const filtroTipo = document.getElementById("filtroTipo");
   const busquedaTelar = document.getElementById("busquedaTelar");
+  const busquedaCodigoOcurrencia = document.getElementById(
+    "busquedaCodigoOcurrencia"
+  );
   const btnImprimir = document.getElementById("btnImprimir");
+
+  const fileData = sessionStorage.getItem("fileData");
+  if (fileData) {
+    const data = new Uint8Array(JSON.parse(fileData));
+    processData(data);
+  }
+
+  if (dropZone) {
+    dropZone.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("dragover");
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    dropZone.addEventListener("click", function () {
+      fileInput.click();
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener("change", function () {
+      const files = this.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+  }
 
   if (filtroTurno) {
     filtroTurno.addEventListener("change", function () {
       turnoSeleccionado = this.value;
-      if (this.value === "promedio") {
+      if (mostrarPromedio) {
         renderPromedioPorTelar();
       } else {
         renderTelares();
@@ -249,8 +304,15 @@ document.addEventListener("DOMContentLoaded", function () {
   if (filtroTipo) {
     filtroTipo.addEventListener("change", function () {
       tipoSeleccionado = this.value;
+      if (this.value === "con_ocurrencias") {
+        busquedaCodigoOcurrencia.style.display = "inline-block";
+      } else {
+        busquedaCodigoOcurrencia.style.display = "none";
+        busquedaCodigoOcurrencia.value = "";
+        busquedaCodigosOcurrencia = [];
+      }
       // Verificar si está en modo promedio o normal
-      if (filtroTurno && filtroTurno.value === "promedio") {
+      if (mostrarPromedio) {
         renderPromedioPorTelar();
       } else {
         renderTelares();
@@ -268,13 +330,41 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       // Renderizar según el filtro actual (promedio o normal)
-      if (filtroTurno && filtroTurno.value === "promedio") {
+      if (mostrarPromedio) {
         renderPromedioPorTelar();
       } else {
         renderTelares();
       }
     });
   }
+
+  if (busquedaCodigoOcurrencia) {
+    busquedaCodigoOcurrencia.addEventListener("input", function () {
+      const valor = this.value.trim();
+      if (valor.length === 0) {
+        busquedaCodigosOcurrencia = [];
+      } else {
+        busquedaCodigosOcurrencia = valor
+          .split(",")
+          .map((codigo) => codigo.trim());
+      }
+
+      if (mostrarPromedio) {
+        renderPromedioPorTelar();
+      } else {
+        renderTelares();
+      }
+    });
+  }
+
+  togglePromedio.addEventListener("change", function () {
+    mostrarPromedio = this.checked;
+    if (mostrarPromedio) {
+      renderPromedioPorTelar();
+    } else {
+      renderTelares();
+    }
+  });
 
   if (btnImprimir) {
     btnImprimir.onclick = function () {
@@ -382,6 +472,18 @@ function renderPromedioPorTelar() {
     telaresFiltrados = telaresFiltrados.filter((telar) =>
       busquedaIds.includes(String(telar.id))
     );
+  }
+
+  // Aplicar filtro de búsqueda por código de ocurrencia a los promedios
+  if (busquedaCodigosOcurrencia.length > 0) {
+    telaresFiltrados = telaresFiltrados.filter((telar) => {
+      const hasMatchingOcurrencia = ocurrenciasData.some(
+        (item) =>
+          String(item.telar) === String(telar.id) &&
+          busquedaCodigosOcurrencia.includes(String(item.codigo))
+      );
+      return hasMatchingOcurrencia;
+    });
   }
 
   telaresFiltrados.forEach((telar) => {
