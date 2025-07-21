@@ -245,13 +245,13 @@ body {
 }
 
 .ocurrencias-info h4 {
-  font-size: 1em;
+  font-size: 0.68em;
   color: #3498db;
   margin-bottom: 8px;
 }
 
 .ocurrencias-info p {
-  font-size: 0.85em;
+  font-size: 0.65em;
   color: #555;
   margin-bottom: 4px;
 }
@@ -371,6 +371,26 @@ body {
   width: 10px !important; /* Asegura el ancho del indicador */
   height: 10px !important; /* Asegura la altura del indicador */
   border-radius: 50% !important; /* Asegura la forma de círculo */
+}
+
+#dropZone {
+  border: 2px dashed #bfc9d9;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s, border-color 0.3s;
+  width: 100%;
+}
+
+#dropZone p {
+  color: #3b3b3b;
+  font-weight: 600;
+}
+
+#dropZone.dragover {
+  background-color: #e0e7ff;
+  border-color: #667eea;
 }
 
 /* Responsive: apila los controles en pantallas pequeñas */
