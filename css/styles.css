@@ -1,3 +1,6 @@
+/* =================================================================================
+   Estilos Globales y Base
+   ================================================================================= */
 * {
   margin: 0;
   padding: 0;
@@ -9,101 +12,165 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   padding: 20px;
+  color: #333;
 }
 
-.container {
-  max-width: 1500px;
+/* =================================================================================
+   Contenedor Principal y Cabecera
+   ================================================================================= */
+.contenedor-principal {
+  max-width: 1600px;
   margin: 0 auto;
 }
 
-.header {
+.encabezado-principal {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Centra horizontalmente los elementos hijos */
+  align-items: center;
   margin-bottom: 20px;
+  color: #fff;
 }
 
-.header h1 {
+.encabezado-principal h1 {
   font-size: 1.5em;
   margin-bottom: 10px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  color: #fff;
-  text-align: center;
 }
 
-.controls {
+#infoFecha {
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.leyenda {
+  display: flex;
+  gap: 20px;
+  font-weight: 600;
+}
+
+.leyenda span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =================================================================================
+   Panel de Controles y Filtros
+   ================================================================================= */
+.controles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-start; /* Volver a flex-start para un control más predecible */
-  gap: 15px; /* Espacio entre elementos */
-  background: linear-gradient(90deg, #f8fafc 80%, #e0e7ff 100%);
+  justify-content: flex-start;
+  gap: 15px;
+  background: #f8fafc;
   border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(76, 62, 202, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
   padding: 15px 25px;
+  margin-bottom: 28px;
   font-family: "Segoe UI", Arial, sans-serif;
   font-size: 14px;
-  margin-bottom: 28px;
 }
 
-.controls label {
+.controles label {
   font-weight: 700;
   color: #3b3b3b;
-  margin-right: 5px; /* Ajustar margen */
+  margin-right: 5px;
   letter-spacing: 0.5px;
-  font-size: 14px; /* Reducir el tamaño de la fuente */
+  font-size: 14px;
 }
 
-.controls select,
-.controls input[type="text"] {
+.controles select,
+.controles input[type="text"] {
   border: 1px solid #bfc9d9;
   border-radius: 6px;
-  padding: 6px 12px; /* Reducir el padding */
-  font-size: 13px; /* Reducir el tamaño de la fuente */
+  padding: 6px 12px;
+  font-size: 13px;
   background: #fff;
   color: #2c3e50;
   outline: none;
-  transition: border 0.2s;
-  box-shadow: 0 1px 2px rgba(76, 62, 202, 0.04);
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.controls select:focus,
-.controls input[type="text"]:focus {
-  border: 1.5px solid #667eea;
+.controles select:focus,
+.controles input[type="text"]:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
-.controls .legend {
+.control-promedio {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px; /* Reducir el espacio entre elementos de la leyenda */
-  margin-left: auto;
-  font-size: 13px; /* Reducir el tamaño de la fuente de la leyenda */
+  gap: 5px;
 }
 
-.telares-grid {
+.btn-imprimir {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #667eea;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto; /* Empuja el botÃ³n a la derecha */
+}
+
+.btn-imprimir:hover {
+  background: #5a67d8;
+}
+
+/* =================================================================================
+   Zona de Arrastrar y Soltar (Drag & Drop)
+   ================================================================================= */
+#zonaArrastre {
+  border: 2px dashed #bfc9d9;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s, border-color 0.3s;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+#zonaArrastre p {
+  color: #3b3b3b;
+  font-weight: 600;
+}
+
+#zonaArrastre.dragover {
+  background-color: #e0e7ff;
+  border-color: #667eea;
+}
+
+/* =================================================================================
+   Grilla y Tarjetas de Telares
+   ================================================================================= */
+.grilla-telares {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;
-  margin-bottom: 20px;
 }
 
-.telar {
+.tarjeta-telar {
   background: white;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 15px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s, box-shadow 0.3s;
   position: relative;
   overflow: hidden;
 }
 
-.telar:hover {
+.tarjeta-telar:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
 }
 
-.telar-header {
+/* --- Contenido de la Tarjeta --- */
+.telar-encabezado {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -114,14 +181,14 @@ body {
 
 .telar-id {
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 700;
   color: #2c3e50;
 }
 
 .telar-rpm {
   background: #3498db;
   color: white;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-radius: 15px;
   font-size: 14px;
   font-weight: bold;
@@ -141,15 +208,16 @@ body {
   border-left: 4px solid #3498db;
 }
 
-.info-label {
+.info-etiqueta {
   font-size: 11px;
-  color: #666;
+  color: #6c757d;
   margin-bottom: 3px;
+  font-weight: 600;
 }
 
-.info-value {
+.info-valor {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: #2c3e50;
 }
 
@@ -162,276 +230,128 @@ body {
 
 .parametro {
   text-align: center;
-  padding: 8px;
+  padding: 10px 5px;
   border-radius: 5px;
   font-size: 12px;
   font-weight: bold;
 }
 
-.parametro.cmpx-tip {
+.parametro.cmpx-trama {
   background: #fff3cd;
   color: #856404;
 }
-
-.parametro.cmpx-up {
+.parametro.cmpx-urdimbre {
   background: #d4edda;
   color: #155724;
 }
-
-.parametro.efic-ip {
+.parametro.eficiencia {
   background: #f8d7da;
   color: #721c24;
 }
 
-.turno-indicator {
+.indicador-turno {
   text-align: center;
   font-size: 11px;
+  font-weight: 700;
+  color: #6c757d;
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
 }
 
-/* Indicadores de estado para telares */
-.telar-status {
+/* --- Indicadores de Estado (CÃ­rculos) --- */
+.telar-estado {
   display: flex;
   gap: 8px;
   position: absolute;
   top: 10px;
-  left: 50%; /* Centra horizontalmente */
-  transform: translateX(-50%);
-  align-items: center;
-  z-index: 2;
+  left: 45%;
 }
 
-.status-eficiencia-alta {
-  background: #4caf50;
+.indicador-estado {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite ease-in-out;
 }
 
-.status-eficiencia-baja {
-  background: #f60404;
+.estado-eficiencia-alta {
+  background: #28a745;
 }
-
-.status-cmpx-alto {
-  background: #d07e0c;
+.estado-eficiencia-baja {
+  background: #dc3545;
 }
-
-.status-cmpx-bajo {
+.estado-cmpx-alto {
+  background: #ffc107;
+}
+.estado-cmpx-bajo {
   background: #9210b9;
 }
 
-.telar-status-indicator {
-  width: 10px;
-  height: 10px;
-  min-width: 10px; /* Asegura que el ancho mínimo sea 10px */
-  min-height: 10px; /* Asegura que la altura mínima sea 10px */
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-  display: inline-block;
-}
-
 @keyframes pulse {
-  0% {
+  0%,
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
   50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
+    transform: scale(0.8);
+    opacity: 0.7;
   }
 }
 
-.ocurrencias-info {
+/* --- SecciÃ³n de Ocurrencias --- */
+.info-ocurrencias {
   margin-top: 15px;
   padding-top: 10px;
   border-top: 1px solid #f0f0f0;
 }
 
-.ocurrencias-info h4 {
+.info-ocurrencias h4 {
   font-size: 0.68em;
   color: #3498db;
   margin-bottom: 8px;
 }
 
-.ocurrencias-info p {
-  font-size: 0.65em;
+.info-ocurrencias p {
+  font-size: 12px;
   color: #555;
   margin-bottom: 4px;
 }
 
-.ocurrencias-info p strong {
-  color: #2c3e50;
+/* =================================================================================
+   Estilos para ImpresiÃ³n
+   ================================================================================= */
+@media print {
+  body {
+    background: #fff;
+    padding: 0;
+  }
+  .controles,
+  .encabezado-principal {
+    display: none;
+  }
+  .contenedor-principal {
+    box-shadow: none;
+    max-width: 100%;
+  }
+  .tarjeta-telar {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+  }
 }
 
-.add-telar {
-  background: #ecf0f1;
-  border: 2px dashed #bdc3c7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  min-height: 200px;
-}
-
-.add-telar:hover {
-  background: #d5dbdb;
-  border-color: #85929e;
-}
-
-.add-telar-content {
-  text-align: center;
-  color: #7f8c8d;
-}
-
-.add-telar-content i {
-  font-size: 48px;
-  margin-bottom: 10px;
-}
-
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-  background-color: white;
-  margin: 15% auto;
-  padding: 20px;
-  border-radius: 10px;
-  width: 80%;
-  max-width: 500px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 14px;
-}
-
-.form-actions {
-  text-align: right;
-  margin-top: 20px;
-}
-
-.form-actions button {
-  margin-left: 10px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-secondary {
-  background: #95a5a6;
-  color: white;
-}
-
-.btn-imprimir {
-  padding: 7px 16px;
-  border-radius: 6px;
-  border: 1px solid #bfc9d9;
-  background: #667eea;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.btn-imprimir:hover {
-  background: #5a67d8;
-  color: #e0e7ff;
-}
-
-.legend-indicator {
-  position: static !important;
-  animation: none !important;
-  display: inline-block;
-  vertical-align: middle;
-  width: 10px !important; /* Asegura el ancho del indicador */
-  height: 10px !important; /* Asegura la altura del indicador */
-  border-radius: 50% !important; /* Asegura la forma de círculo */
-}
-
-#dropZone {
-  border: 2px dashed #bfc9d9;
-  border-radius: 6px;
-  padding: 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.3s, border-color 0.3s;
-  width: 100%;
-}
-
-#dropZone p {
-  color: #3b3b3b;
-  font-weight: 600;
-}
-
-#dropZone.dragover {
-  background-color: #e0e7ff;
-  border-color: #667eea;
-}
-
-/* Responsive: apila los controles en pantallas pequeñas */
+/* =================================================================================
+   DiseÃ±o Responsivo
+   ================================================================================= */
 @media (max-width: 900px) {
-  .controls {
+  .controles {
     flex-direction: column;
-    align-items: center; /* Hace que los elementos hijos se estiren para llenar el ancho */
-    gap: 10px;
-    padding: 12px;
+    align-items: stretch;
+    gap: 12px;
   }
-
-  .controls label,
-  .controls select,
-  .controls input[type="text"],
-  .controls button {
-  }
-
-  .controls label {
-    margin-right: 0;
-    width: 100%; /* Asegurar que el label ocupe su propia línea */
-  }
-
-  .controls select,
-  .controls input[type="text"],
-  .controls button {
-    width: 100%; /* Asegurar que los inputs y botones ocupen todo el ancho */
-  }
-
-  .controls .legend {
-    flex-direction: column;
-    align-items: flex-start; /* Centra los elementos de la leyenda */
+  .btn-imprimir {
     margin-left: 0;
-    width: 100%;
-    gap: 6px;
-    font-size: 12px;
-  }
-
-  .controls .legend span {
-    width: auto; /* Permitir que los spans de la leyenda tomen su ancho natural */
-    display: inline-flex; /* Usar inline-flex para mantener el comportamiento en línea y alinear el contenido */
-    align-items: center;
-    gap: 5px; /* Espacio entre el indicador y el texto */
   }
 }
