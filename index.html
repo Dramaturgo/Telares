@@ -3,104 +3,81 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sistema de Telares</title>
+    <title>Monitor de Telares</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <!-- Librería para leer archivos de Excel (.xlsx, .xlsm) -->
     <script src="js/xlsx.mini.min.js"></script>
   </head>
   <body>
-    <div class="container">
-      <div class="header">
+    <div class="contenedor-principal">
+      <!-- Cabecera de la aplicación -->
+      <header class="encabezado-principal">
         <h1>MONITOR DE TELARES</h1>
-        <span id="fechaInfo" style="font-weight: 600; color: #ffffff"></span>
-        <br />
-        <div class="legend">
-          <span style="font-weight: 600; color: #ffffff">
-            <span
-              class="telar-status-indicator status-eficiencia-alta legend-indicator"
-            ></span>
-            Eficiencia +
+        <span id="infoFecha"></span>
+        <div class="leyenda">
+          <span>
+            <span class="indicador-estado estado-eficiencia-alta"></span>
+            Efic Alta
           </span>
-          <span style="font-weight: 600; color: #ffffff">
-            <span
-              class="telar-status-indicator status-eficiencia-baja legend-indicator"
-            ></span>
-            Eficiencia -
+          <span>
+            <span class="indicador-estado estado-eficiencia-baja"></span>
+            Efic Baja
           </span>
-          <span style="font-weight: 600; color: #ffffff">
-            <span
-              class="telar-status-indicator status-cmpx-alto legend-indicator"
-            ></span>
-            CMPX +
+          <span>
+            <span class="indicador-estado estado-cmpx-alto"></span>
+            CMPX Alto
           </span>
-          <span style="font-weight: 600; color: #ffffff">
-            <span
-              class="telar-status-indicator status-cmpx-bajo legend-indicator"
-            ></span>
-            CMPX -
+          <span>
+            <span class="indicador-estado estado-cmpx-bajo"></span>
+            CMPX Bajo
           </span>
         </div>
-      </div>
+      </header>
 
-      <div class="controls">
-        <div id="dropZone">
-          <p>
-            Arrastra y suelta un archivo .xlsm aquí o haz clic para seleccionar
-          </p>
-          <input
-            type="file"
-            id="fileInput"
-            accept=".xlsm"
-            style="display: none"
-          />
+      <!-- Panel de controles y filtros -->
+      <div class="controles">
+        <div id="zonaArrastre">
+          <p>Arrastra y suelta un archivo .xlsm aquí o haz clic para seleccionar</p>
+          <input type="file" id="inputArchivo" accept=".xlsm" style="display: none" />
         </div>
-        <label for="filtroTurno">Filtro por Turno:</label>
-        <select id="filtroTurno">
-          <option value="todos">Todos</option>
+        
+        <label for="selectorFiltroTurno">Filtrar por Turno:</label>
+        <select id="selectorFiltroTurno">
+          <option value="todos">Todos los Turnos</option>
           <option value="1">Mañana</option>
           <option value="2">Tarde</option>
           <option value="3">Noche</option>
         </select>
-        <label for="filtroTipo" style="margin-left: 10px"
-          >Filtro por Tipo:</label
-        >
-        <select id="filtroTipo">
-          <option value="todos">Todos</option>
+
+        <label for="selectorFiltroTipo">Filtrar por Tipo:</label>
+        <select id="selectorFiltroTipo">
+          <option value="todos">Todos los Tipos</option>
           <option value="eficiencia_alta">Eficiencia ≥ 87</option>
-          <option value="eficiencia_baja">Eficiencia &lt; 87</option>
-          <option value="cmpx_alto">T/P + U/P &gt; 10</option>
-          <option value="cmpx_bajo">T/P + U/P ≤ 10</option>
-          <option value="con_ocurrencias">Ocurrencias</option>
+          <option value="eficiencia_baja">Eficiencia < 87</option>
+          <option value="cmpx_alto">CMPX > 10</option>
+          <option value="cmpx_bajo">CMPX ≤ 10</option>
+          <option value="con_ocurrencias">Con Ocurrencias</option>
         </select>
-        <input
-          type="text"
-          id="busquedaTelar"
-          placeholder="ID (ej: 101,102)"
-          style="width: 200px"
-        />
-        <input
-          type="text"
-          id="busquedaCodigoOcurrencia"
-          placeholder="Ocurrencia (ej: 409,410)"
-          style="width: 200px; margin-left: 10px; display: none"
-        />
-        <div>
-          <input
-            type="checkbox"
-            id="togglePromedio"
-            style="margin-left: 10px"
-          />
-          <label for="togglePromedio">Promedio</label>
+
+        <input type="text" id="campoBusquedaTelar" placeholder="ID de Telar (ej: 101,102)" />
+        
+        <input type="text" id="campoBusquedaOcurrencia" placeholder="Cód. Ocurrencia (ej: 409,12)" style="display: none;" />
+
+        <div class="control-promedio">
+          <input type="checkbox" id="checkboxPromedio" />
+          <label for="checkboxPromedio">Ver Promedios</label>
         </div>
-        <button id="btnImprimir" class="btn-imprimir" style="margin-left: auto">
-          Imprimir
-        </button>
+
+        <button id="botonImprimir" class="btn-imprimir">Imprimir</button>
       </div>
 
-      <div class="telares-grid" id="telaresGrid">
-        <!-- Los telares se generarán aquí -->
+      <!-- Grilla donde se mostrarán las tarjetas de los telares -->
+      <div id="grillaTelares" class="grilla-telares">
+        <!-- Las tarjetas de los telares se generan dinámicamente con JavaScript -->
       </div>
     </div>
 
+    <!-- Script principal de la aplicación -->
     <script src="js/main.js"></script>
   </body>
 </html>
