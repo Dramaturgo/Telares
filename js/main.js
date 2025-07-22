@@ -1,590 +1,574 @@
-// Elimina los datos de ejemplo y la función actualizarDatos
+// =================================================================================
+// Variables Globales y Estado de la Aplicación
+// =================================================================================
 
-let telares = [];
-let ocurrenciasData = []; // Nueva variable para almacenar los datos de Data2.xlsx
-let turnoSeleccionado = "todos";
-let tipoSeleccionado = "todos";
-let busquedaIds = []; // Nueva variable para almacenar los IDs de búsqueda
-let busquedaCodigosOcurrencia = []; // Nueva variable para almacenar los códigos de ocurrencia de búsqueda
-let primeraFecha = "";
-let mostrarPromedio = false;
+// Almacena los datos de los telares cargados desde el archivo Excel.
+let datosTelares = [];
+// Almacena los datos de las ocurrencias (paros) cargados desde el archivo Excel.
+let datosOcurrencias = [];
+// Estado actual del filtro por turno ('todos', '1', '2', '3').
+let filtroTurnoActual = "todos";
+// Estado actual del filtro por tipo ('todos', 'eficiencia_baja', etc.).
+let filtroTipoActual = "todos";
+// Almacena los IDs de telares para la búsqueda específica.
+let busquedaPorIds = [];
+// Almacena los códigos de ocurrencia para la búsqueda específica.
+let busquedaPorCodigosOcurrencia = [];
+// Almacena la fecha del reporte extraída del archivo.
+let fechaReporte = "";
+// Flag para controlar si se muestra la vista de promedios.
+let vistaPromedioActivada = false;
 
-// Función para aplicar filtros en secuencia
+// =================================================================================
+// Lógica de Procesamiento y Filtrado de Datos
+// =================================================================================
+
+/**
+ * Procesa los datos crudos del archivo Excel, extrayendo la información de las hojas
+ * 'DatosEstadisticos' y 'MotivosParo'.
+ * @param {ArrayBuffer} data - Los datos del archivo Excel como un ArrayBuffer.
+ */
+function procesarDatosExcel(data) {
+  const workbook = XLSX.read(data, { type: "array" });
+
+  // --- Carga de Datos Estadísticos de Telares ---
+  const nombreHojaTelares = "DatosEstadisticos";
+  const hojaTelares = workbook.Sheets[nombreHojaTelares];
+  const jsonTelares = XLSX.utils.sheet_to_json(hojaTelares);
+
+  datosTelares = [];
+  fechaReporte = ""; // Reiniciar la fecha en cada carga
+  jsonTelares.forEach((fila) => {
+    if (!fechaReporte && fila.FECHA) {
+      fechaReporte = fila.FECHA;
+    }
+    datosTelares.push({
+      id: fila.TELAR,
+      turno: fila.TURNO,
+      articulo: fila.ARTICULO,
+      diseño: fila.DISEÑO_COMB || "",
+      rpm: fila.VELOCIDAD_DE_MAQUINA || 0,
+      cmpxTrama: fila.CMPX_PARO_TRAMA || 0,
+      cmpxUrdimbre: fila.CMPX_PARO_URDIMBRE || 0,
+      eficiencia: fila.EFIC_MAQ_TIEMPO || 0,
+    });
+  });
+
+  // --- Carga de Datos de Ocurrencias (Motivos de Paro) ---
+  const nombreHojaOcurrencias = "MotivosParo";
+  const hojaOcurrencias = workbook.Sheets[nombreHojaOcurrencias];
+  datosOcurrencias = XLSX.utils.sheet_to_json(hojaOcurrencias);
+
+  // Una vez procesados los datos, se actualiza la interfaz.
+  visualizarFechaReporte();
+  actualizarVisualizacion();
+}
+
+/**
+ * Aplica una serie de filtros a los datos de los telares según el estado actual
+ * de los controles de la interfaz.
+ * @returns {Array} Un array de telares que cumplen con todos los filtros activos.
+ */
 function aplicarFiltros() {
-  let telaresFiltrados = telares;
+  let telaresFiltrados = datosTelares;
 
-  // Primero aplicar filtro de turno
-  if (turnoSeleccionado !== "todos") {
+  // 1. Filtro por Turno
+  if (filtroTurnoActual !== "todos") {
     telaresFiltrados = telaresFiltrados.filter(
-      (telar) => String(telar.turno).trim() === turnoSeleccionado
+      (telar) => String(telar.turno).trim() === filtroTurnoActual
     );
   }
 
-  // Luego aplicar filtro de tipo sobre el resultado anterior
-  if (tipoSeleccionado !== "todos") {
-    switch (tipoSeleccionado) {
+  // 2. Filtro por Tipo (Eficiencia, CMPX, Ocurrencias)
+  if (filtroTipoActual !== "todos") {
+    switch (filtroTipoActual) {
       case "eficiencia_baja":
         telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.eficIp) < 87
+          (telar) => Number(telar.eficiencia) < 87
         );
         break;
       case "eficiencia_alta":
         telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.eficIp) >= 87
+          (telar) => Number(telar.eficiencia) >= 87
         );
         break;
       case "cmpx_alto":
         telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10
+          (telar) => Number(telar.cmpxTrama) + Number(telar.cmpxUrdimbre) > 10
         );
         break;
       case "cmpx_bajo":
         telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
+          (telar) => Number(telar.cmpxTrama) + Number(telar.cmpxUrdimbre) <= 10
         );
         break;
       case "con_ocurrencias":
-        if (turnoSeleccionado !== "promedio") {
-          telaresFiltrados = telaresFiltrados.filter((telar) => {
-            const hasOcurrencias = ocurrenciasData.some(
-              (item) =>
-                String(item.telar) === String(telar.id) &&
-                String(item.turno) === String(telar.turno)
-            );
-            return hasOcurrencias;
-          });
-        }
+        telaresFiltrados = telaresFiltrados.filter((telar) => {
+          return datosOcurrencias.some(
+            (ocurrencia) =>
+              String(ocurrencia.TELAR) === String(telar.id) &&
+              String(ocurrencia.TURNO) === String(telar.turno)
+          );
+        });
         break;
     }
   }
 
-  // Finalmente, aplicar filtro de búsqueda por ID
-  if (busquedaIds.length > 0) {
+  // 3. Filtro por Búsqueda de IDs
+  if (busquedaPorIds.length > 0) {
     telaresFiltrados = telaresFiltrados.filter((telar) =>
-      busquedaIds.includes(String(telar.id))
+      busquedaPorIds.includes(String(telar.id))
     );
   }
 
-  // Aplicar filtro de búsqueda por código de ocurrencia
-  if (busquedaCodigosOcurrencia.length > 0) {
+  // 4. Filtro por Búsqueda de Códigos de Ocurrencia
+  if (busquedaPorCodigosOcurrencia.length > 0) {
     telaresFiltrados = telaresFiltrados.filter((telar) => {
-      const hasMatchingOcurrencia = ocurrenciasData.some(
-        (item) =>
-          String(item.telar) === String(telar.id) &&
-          String(item.turno) === String(telar.turno) &&
-          busquedaCodigosOcurrencia.includes(String(item.codigo))
+      return datosOcurrencias.some(
+        (ocurrencia) =>
+          String(ocurrencia.TELAR) === String(telar.id) &&
+          String(ocurrencia.TURNO) === String(telar.turno) &&
+          busquedaPorCodigosOcurrencia.includes(String(ocurrencia.CODIGO_PARO))
       );
-      return hasMatchingOcurrencia;
     });
   }
 
   return telaresFiltrados;
 }
 
-// Función para resetear filtros
-function resetearFiltros() {
-  turnoSeleccionado = "todos";
-  tipoSeleccionado = "todos";
+// =================================================================================
+// Lógica de Visualización (Render)
+// =================================================================================
 
-  // Resetear los selects en el HTML
-  const filtroTurno = document.getElementById("filtroTurno");
-  const filtroTipo = document.getElementById("filtroTipo");
-
-  if (filtroTurno) filtroTurno.value = "todos";
-  if (filtroTipo) filtroTipo.value = "todos";
+/**
+ * Decide qué vista mostrar (normal o promedios) y llama a la función de
+ * renderizado correspondiente.
+ */
+function actualizarVisualizacion() {
+  if (vistaPromedioActivada) {
+    visualizarPromedioTelares();
+  } else {
+    visualizarTelares();
+  }
 }
 
-function renderTelares() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
+/**
+ * Renderiza la vista estándar, mostrando una tarjeta por cada telar filtrado.
+ */
+function visualizarTelares() {
+  const grilla = document.getElementById("grillaTelares");
+  grilla.innerHTML = "";
 
-  // Aplicar filtros en secuencia
-  let telaresFiltrados = aplicarFiltros();
+  const telaresFiltrados = aplicarFiltros();
 
   telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    const telarOcurrencias = ocurrenciasData.filter(
+    const elementoTelar = document.createElement("div");
+    elementoTelar.className = "tarjeta-telar";
+
+    // Obtener ocurrencias específicas para este telar y turno
+    const ocurrenciasDelTelar = datosOcurrencias.filter(
       (item) =>
-        String(item.telar) === String(telar.id) &&
-        String(item.turno) === String(telar.turno)
+        String(item.TELAR) === String(telar.id) &&
+        String(item.TURNO) === String(telar.turno)
     );
 
-    let ocurrenciasHtml = "";
-    if (
-      tipoSeleccionado === "con_ocurrencias" &&
-      turnoSeleccionado !== "promedio" &&
-      telarOcurrencias.length > 0
-    ) {
-      ocurrenciasHtml = `
-        <div class="ocurrencias-info">
+    // Generar HTML para las ocurrencias si el filtro está activo
+    let htmlOcurrencias = "";
+    if (filtroTipoActual === "con_ocurrencias" && ocurrenciasDelTelar.length > 0) {
+      htmlOcurrencias = `
+        <div class="info-ocurrencias">
           <h4>Ocurrencias:</h4>
-          ${telarOcurrencias
+          ${ocurrenciasDelTelar
             .map(
               (oc) =>
-                `<p><strong>Descripción:</strong> ${oc.descripcion} (${
-                  oc.codigo
-                }) - <strong>Duración:</strong> ${Number(oc.duracion).toFixed(
-                  2
-                )}</p>`
+                `<p><strong>${oc.CODIGO_PARO}:</strong> ${
+                  oc.DESCRIPCION_PARO
+                } - <strong>Duración:</strong> ${Number(oc.DURACION).toFixed(2)}</p>`
             )
             .join("")}
         </div>
       `;
     }
 
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicators(telar)}
+    elementoTelar.innerHTML = `
+      <div class="telar-estado">
+        ${obtenerIndicadoresEstado(telar)}
       </div>
-      <div class="telar-header">
+      <div class="telar-encabezado">
           <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
+          <div class="telar-rpm">RPM ${telar.rpm}</div>
       </div>
       <div class="telar-info">
           <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
+              <div class="info-etiqueta">ARTICULO</div>
+              <div class="info-valor">${telar.articulo}</div>
           </div>
           <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
+              <div class="info-etiqueta">DISEÑO</div>
+              <div class="info-valor">${telar.diseño}</div>
           </div>
       </div>
       <div class="parametros">
-          <div class="parametro cmpx-tip">
+          <div class="parametro cmpx-trama">
               <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
+              <div>${Number(telar.cmpxTrama).toFixed(2)}</div>
           </div>
-          <div class="parametro cmpx-up">
+          <div class="parametro cmpx-urdimbre">
               <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
+              <div>${Number(telar.cmpxUrdimbre).toFixed(2)}</div>
           </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
+          <div class="parametro eficiencia">
+              <div>EFIC.MAQ</div>
+              <div>${Number(telar.eficiencia).toFixed(2)}</div>
           </div>
       </div>
-      <div class="turno-indicator">${telar.turno}</div>
-      ${ocurrenciasHtml}
+      <div class="indicador-turno">${telar.turno}</div>
+      ${htmlOcurrencias}
     `;
-    grid.appendChild(telarElement);
+    grilla.appendChild(elementoTelar);
   });
 }
 
-function processData(data) {
-  const workbook = XLSX.read(data, { type: "array" });
+/**
+ * Calcula y renderiza la vista de promedios, agrupando los datos por ID de telar.
+ */
+function visualizarPromedioTelares() {
+  const grilla = document.getElementById("grillaTelares");
+  grilla.innerHTML = "";
 
-  // Cargar datos de Data.xlsx (segunda hoja, índice 1)
-  const sheetName1 = workbook.SheetNames[1]; // Segunda hoja (índice 1)
-  const sheet1 = workbook.Sheets[sheetName1];
-  const json1 = XLSX.utils.sheet_to_json(sheet1);
-
-  telares = [];
-  primeraFecha = ""; // Reinicia por si recargas
-  json1.forEach((row, idx) => {
-    if (!primeraFecha && row.Fecha) {
-      primeraFecha = row.Fecha;
+  // 1. Agrupar telares por ID
+  const telaresAgrupados = {};
+  datosTelares.forEach((telar) => {
+    if (!telaresAgrupados[telar.id]) {
+      telaresAgrupados[telar.id] = [];
     }
-    telares.push({
-      id: row.Telar,
-      turno: row.Turno,
-      articulo: row.Articulo,
-      diseño: row.Diseño || "",
-      rpm: row.VelocidadTelar || 0,
-      cmpxTip: row.TiempoparoManual || row["CmpxParoxTrama"] || 0,
-      cmpxUp: row.TiempoparoxTrama || row["CmpxParoxUrdimbre"] || 0,
-      eficIp: row.EficienciaMaqTiempo || 0,
-    });
+    telaresAgrupados[telar.id].push(telar);
   });
 
-  // Cargar datos de Data2.xlsx (tercera hoja, índice 2)
-  const sheetName2 = workbook.SheetNames[2]; // Tercera hoja (índice 2)
-  const sheet2 = workbook.Sheets[sheetName2];
-  ocurrenciasData = XLSX.utils.sheet_to_json(sheet2);
+  // 2. Calcular promedios para cada grupo
+  let telaresPromedio = Object.keys(telaresAgrupados).map((id) => {
+    const grupo = telaresAgrupados[id];
+    const total = grupo.length;
+    const cmpxTramaProm = grupo.reduce((sum, t) => sum + Number(t.cmpxTrama), 0) / total;
+    const cmpxUrdimbreProm = grupo.reduce((sum, t) => sum + Number(t.cmpxUrdimbre), 0) / total;
+    const eficienciaProm = grupo.reduce((sum, t) => sum + Number(t.eficiencia), 0) / total;
 
-  renderFechaEnControles();
-  renderTelares();
+    return {
+      id: grupo[0].id,
+      articulo: grupo[0].articulo,
+      diseño: grupo[0].diseño,
+      rpm: grupo[0].rpm,
+      cmpxTrama: cmpxTramaProm,
+      cmpxUrdimbre: cmpxUrdimbreProm,
+      eficiencia: eficienciaProm,
+    };
+  });
+
+  // 3. Aplicar filtros a los datos promediados
+  if (filtroTipoActual !== "todos") {
+    switch (filtroTipoActual) {
+      case "eficiencia_baja":
+        telaresPromedio = telaresPromedio.filter((t) => t.eficiencia < 87);
+        break;
+      case "eficiencia_alta":
+        telaresPromedio = telaresPromedio.filter((t) => t.eficiencia >= 87);
+        break;
+      case "cmpx_alto":
+        telaresPromedio = telaresPromedio.filter((t) => t.cmpxTrama + t.cmpxUrdimbre > 10);
+        break;
+      case "cmpx_bajo":
+        telaresPromedio = telaresPromedio.filter((t) => t.cmpxTrama + t.cmpxUrdimbre <= 10);
+        break;
+      case "con_ocurrencias":
+        telaresPromedio = telaresPromedio.filter((t) =>
+          datosOcurrencias.some((oc) => String(oc.TELAR) === String(t.id))
+        );
+        break;
+    }
+  }
+
+  if (busquedaPorIds.length > 0) {
+    telaresPromedio = telaresPromedio.filter((t) => busquedaPorIds.includes(String(t.id)));
+  }
+
+  if (busquedaPorCodigosOcurrencia.length > 0) {
+    telaresPromedio = telaresPromedio.filter((t) =>
+      datosOcurrencias.some(
+        (oc) =>
+          String(oc.TELAR) === String(t.id) &&
+          busquedaPorCodigosOcurrencia.includes(String(oc.CODIGO_PARO))
+      )
+    );
+  }
+
+  // 4. Renderizar las tarjetas de promedios
+  telaresPromedio.forEach((telar) => {
+    const elementoTelar = document.createElement("div");
+    elementoTelar.className = "tarjeta-telar";
+    elementoTelar.innerHTML = `
+      <div class="telar-estado">
+        ${obtenerIndicadoresEstado(telar)}
+      </div>
+      <div class="telar-encabezado">
+          <div class="telar-id">${telar.id}</div>
+          <div class="telar-rpm">RPM ${telar.rpm}</div>
+      </div>
+      <div class="telar-info">
+          <div class="info-item">
+              <div class="info-etiqueta">ARTICULO</div>
+              <div class="info-valor">${telar.articulo}</div>
+          </div>
+          <div class="info-item">
+              <div class="info-etiqueta">DISEÑO</div>
+              <div class="info-valor">${telar.diseño}</div>
+          </div>
+      </div>
+      <div class="parametros">
+          <div class="parametro cmpx-trama">
+              <div>CMPX T/P</div>
+              <div>${Number(telar.cmpxTrama).toFixed(2)}</div>
+          </div>
+          <div class="parametro cmpx-urdimbre">
+              <div>CMPX U/P</div>
+              <div>${Number(telar.cmpxUrdimbre).toFixed(2)}</div>
+          </div>
+          <div class="parametro eficiencia">
+              <div>EFIC. /P</div>
+              <div>${Number(telar.eficiencia).toFixed(2)}</div>
+          </div>
+      </div>
+    `;
+    grilla.appendChild(elementoTelar);
+  });
 }
 
-function handleFile(file) {
+/**
+ * Genera el HTML para los indicadores de estado (círculos de colores) de un telar.
+ * @param {object} telar - El objeto telar con sus datos.
+ * @returns {string} El HTML de los indicadores.
+ */
+function obtenerIndicadoresEstado(telar) {
+  const indicadores = [];
+  if (Number(telar.eficiencia) < 87) {
+    indicadores.push('<span class="indicador-estado estado-eficiencia-baja" title="Eficiencia baja"></span>');
+  } else {
+    indicadores.push('<span class="indicador-estado estado-eficiencia-alta" title="Eficiencia alta"></span>');
+  }
+  if (Number(telar.cmpxTrama) + Number(telar.cmpxUrdimbre) > 10) {
+    indicadores.push('<span class="indicador-estado estado-cmpx-alto" title="CMPX alto"></span>');
+  } else {
+    indicadores.push('<span class="indicador-estado estado-cmpx-bajo" title="CMPX bajo"></span>');
+  }
+  return indicadores.join("");
+}
+
+/**
+ * Muestra la fecha del reporte en la cabecera de la aplicación.
+ */
+function visualizarFechaReporte() {
+  const divFecha = document.getElementById("infoFecha");
+  if (divFecha) {
+    let fechaFormateada = "";
+    if (fechaReporte) {
+      // La fecha de Excel es un número serial, se debe convertir.
+      if (!isNaN(fechaReporte)) {
+        fechaFormateada = formatearFechaExcel(Number(fechaReporte));
+      } else {
+        fechaFormateada = fechaReporte; // Si ya es texto, usar directamente.
+      }
+    }
+    divFecha.textContent = fechaFormateada ? `Fecha de Reporte: ${fechaFormateada}` : "";
+  }
+}
+
+// =================================================================================
+// Manejadores de Eventos e Inicialización
+// =================================================================================
+
+/**
+ * Lee el archivo seleccionado por el usuario y dispara el procesamiento.
+ * @param {File} archivo - El archivo Excel seleccionado.
+ */
+function manejarArchivo(archivo) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    sessionStorage.setItem("fileData", JSON.stringify(Array.from(data)));
-    processData(data);
+    // Guardar en sessionStorage para persistir entre recargas
+    sessionStorage.setItem("archivoDatos", JSON.stringify(Array.from(data)));
+    procesarDatosExcel(data);
   };
-  reader.readAsArrayBuffer(file);
+  reader.readAsArrayBuffer(archivo);
 }
 
-// Muestra la fecha en el div de controles
-function renderFechaEnControles() {
-  const fechaDiv = document.getElementById("fechaInfo");
-  if (fechaDiv) {
-    let fechaFormateada = "";
-    if (primeraFecha) {
-      if (!isNaN(primeraFecha)) {
-        fechaFormateada = excelDateToYMD(Number(primeraFecha));
-      } else {
-        fechaFormateada = primeraFecha;
-      }
-    }
-    fechaDiv.textContent = fechaFormateada ? `${fechaFormateada}` : "";
-  }
+/**
+ * Reinicia todos los filtros a su estado por defecto y actualiza la vista.
+ */
+function reiniciarFiltros() {
+  filtroTurnoActual = "todos";
+  filtroTipoActual = "todos";
+  busquedaPorIds = [];
+  busquedaPorCodigosOcurrencia = [];
+
+  document.getElementById("selectorFiltroTurno").value = "todos";
+  document.getElementById("selectorFiltroTipo").value = "todos";
+  document.getElementById("campoBusquedaTelar").value = "";
+  document.getElementById("campoBusquedaOcurrencia").value = "";
+  
+  actualizarVisualizacion();
 }
 
-// Inicializar la aplicación
-renderTelares();
-
+// Se ejecuta cuando el DOM está completamente cargado.
 document.addEventListener("DOMContentLoaded", function () {
-  const dropZone = document.getElementById("dropZone");
-  const fileInput = document.getElementById("fileInput");
-  const filtroTurno = document.getElementById("filtroTurno");
-  const filtroTipo = document.getElementById("filtroTipo");
-  const busquedaTelar = document.getElementById("busquedaTelar");
-  const busquedaCodigoOcurrencia = document.getElementById(
-    "busquedaCodigoOcurrencia"
-  );
-  const btnImprimir = document.getElementById("btnImprimir");
+  // --- Obtención de Elementos del DOM ---
+  const zonaArrastre = document.getElementById("zonaArrastre");
+  const inputArchivo = document.getElementById("inputArchivo");
+  const selectorFiltroTurno = document.getElementById("selectorFiltroTurno");
+  const selectorFiltroTipo = document.getElementById("selectorFiltroTipo");
+  const campoBusquedaTelar = document.getElementById("campoBusquedaTelar");
+  const campoBusquedaOcurrencia = document.getElementById("campoBusquedaOcurrencia");
+  const checkboxPromedio = document.getElementById("checkboxPromedio");
+  const botonImprimir = document.getElementById("botonImprimir");
 
-  const fileData = sessionStorage.getItem("fileData");
-  if (fileData) {
-    const data = new Uint8Array(JSON.parse(fileData));
-    processData(data);
+  // --- Carga de Datos desde Session Storage (si existen) ---
+  const datosGuardados = sessionStorage.getItem("archivoDatos");
+  if (datosGuardados) {
+    const data = new Uint8Array(JSON.parse(datosGuardados));
+    procesarDatosExcel(data);
   }
 
-  if (dropZone) {
-    dropZone.addEventListener("dragover", function (e) {
+  // --- Configuración de Event Listeners ---
+
+  // Zona de Arrastrar y Soltar (Drag and Drop)
+  if (zonaArrastre) {
+    zonaArrastre.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.classList.add("dragover");
+      zonaArrastre.classList.add("dragover");
     });
-
-    dropZone.addEventListener("dragleave", function (e) {
+    zonaArrastre.addEventListener("dragleave", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.classList.remove("dragover");
+      zonaArrastre.classList.remove("dragover");
     });
-
-    dropZone.addEventListener("drop", function (e) {
+    zonaArrastre.addEventListener("drop", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.classList.remove("dragover");
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleFile(files[0]);
+      zonaArrastre.classList.remove("dragover");
+      if (e.dataTransfer.files.length > 0) {
+        manejarArchivo(e.dataTransfer.files[0]);
       }
     });
-
-    dropZone.addEventListener("click", function () {
-      fileInput.click();
-    });
+    zonaArrastre.addEventListener("click", () => inputArchivo.click());
   }
 
-  if (fileInput) {
-    fileInput.addEventListener("change", function () {
-      const files = this.files;
-      if (files.length > 0) {
-        handleFile(files[0]);
+  // Input de Archivo
+  if (inputArchivo) {
+    inputArchivo.addEventListener("change", function () {
+      if (this.files.length > 0) {
+        manejarArchivo(this.files[0]);
       }
     });
   }
 
-  if (filtroTurno) {
-    filtroTurno.addEventListener("change", function () {
-      turnoSeleccionado = this.value;
-      if (mostrarPromedio) {
-        renderPromedioPorTelar();
-      } else {
-        renderTelares();
-      }
+  // Filtro por Turno
+  if (selectorFiltroTurno) {
+    selectorFiltroTurno.addEventListener("change", function () {
+      filtroTurnoActual = this.value;
+      actualizarVisualizacion();
     });
   }
 
-  if (filtroTipo) {
-    filtroTipo.addEventListener("change", function () {
-      tipoSeleccionado = this.value;
-      if (this.value === "con_ocurrencias") {
-        busquedaCodigoOcurrencia.style.display = "inline-block";
-      } else {
-        busquedaCodigoOcurrencia.style.display = "none";
-        busquedaCodigoOcurrencia.value = "";
-        busquedaCodigosOcurrencia = [];
+  // Filtro por Tipo
+  if (selectorFiltroTipo) {
+    selectorFiltroTipo.addEventListener("change", function () {
+      filtroTipoActual = this.value;
+      // Muestra u oculta el campo de búsqueda de ocurrencias
+      campoBusquedaOcurrencia.style.display = this.value === "con_ocurrencias" ? "inline-block" : "none";
+      if (this.value !== "con_ocurrencias") {
+        campoBusquedaOcurrencia.value = "";
+        busquedaPorCodigosOcurrencia = [];
       }
-      // Verificar si está en modo promedio o normal
-      if (mostrarPromedio) {
-        renderPromedioPorTelar();
-      } else {
-        renderTelares();
-      }
+      actualizarVisualizacion();
     });
   }
 
-  if (busquedaTelar) {
-    busquedaTelar.addEventListener("input", function () {
+  // Búsqueda por ID de Telar
+  if (campoBusquedaTelar) {
+    campoBusquedaTelar.addEventListener("input", function () {
       const valor = this.value.trim();
-      if (valor.length === 0) {
-        busquedaIds = []; // Limpiar IDs de búsqueda si el campo está vacío
-      } else {
-        busquedaIds = valor.split(",").map((id) => id.trim()); // Actualizar IDs de búsqueda
-      }
-
-      // Renderizar según el filtro actual (promedio o normal)
-      if (mostrarPromedio) {
-        renderPromedioPorTelar();
-      } else {
-        renderTelares();
-      }
+      busquedaPorIds = valor ? valor.split(",").map((id) => id.trim()) : [];
+      actualizarVisualizacion();
     });
   }
 
-  if (busquedaCodigoOcurrencia) {
-    busquedaCodigoOcurrencia.addEventListener("input", function () {
+  // Búsqueda por Código de Ocurrencia
+  if (campoBusquedaOcurrencia) {
+    campoBusquedaOcurrencia.addEventListener("input", function () {
       const valor = this.value.trim();
-      if (valor.length === 0) {
-        busquedaCodigosOcurrencia = [];
-      } else {
-        busquedaCodigosOcurrencia = valor
-          .split(",")
-          .map((codigo) => codigo.trim());
-      }
-
-      if (mostrarPromedio) {
-        renderPromedioPorTelar();
-      } else {
-        renderTelares();
-      }
+      busquedaPorCodigosOcurrencia = valor ? valor.split(",").map((c) => c.trim()) : [];
+      actualizarVisualizacion();
     });
   }
 
-  togglePromedio.addEventListener("change", function () {
-    mostrarPromedio = this.checked;
-    if (mostrarPromedio) {
-      renderPromedioPorTelar();
-    } else {
-      renderTelares();
-    }
-  });
+  // Checkbox para vista de Promedio
+  if (checkboxPromedio) {
+    checkboxPromedio.addEventListener("change", function () {
+      vistaPromedioActivada = this.checked;
+      actualizarVisualizacion();
+    });
+  }
 
-  if (btnImprimir) {
-    btnImprimir.onclick = function () {
-      const grid = document.getElementById("telaresGrid");
-      const ventana = window.open("", "", "width=900,height=700");
-      ventana.document.write(`
+  // Botón de Imprimir
+  if (botonImprimir) {
+    botonImprimir.onclick = function () {
+      const grilla = document.getElementById("grillaTelares");
+      const ventanaImpresion = window.open("", "", "width=900,height=700");
+      ventanaImpresion.document.write(`
         <html>
           <head>
             <title>Imprimir Telares</title>
             <link rel="stylesheet" href="css/styles.css" />
             <style>
-              body { background: #f8fafc; margin: 0; }
-              .container { box-shadow: none; }
+              body { background: #fff; }
+              .contenedor-principal { box-shadow: none; }
+              @media print {
+                .controles, .header h1, .header .legend { display: none; }
+                .tarjeta-telar { page-break-inside: avoid; }
+              }
             </style>
           </head>
           <body>
-            <div class="telares-grid">
-              ${grid.innerHTML}
+            <div class="grilla-telares">
+              ${grilla.innerHTML}
             </div>
           </body>
         </html>
       `);
-      ventana.document.close();
-      // Espera a que la hoja de estilos se cargue antes de imprimir
-      ventana.onload = function () {
-        ventana.focus();
-        ventana.print();
-        ventana.close();
+      ventanaImpresion.document.close();
+      ventanaImpresion.onload = function () {
+        ventanaImpresion.focus();
+        ventanaImpresion.print();
+        ventanaImpresion.close();
       };
     };
   }
 });
 
-function renderPromedioPorTelar() {
-  const grid = document.getElementById("telaresGrid");
-  grid.innerHTML = "";
+// =================================================================================
+// Funciones Utilitarias
+// =================================================================================
 
-  // Agrupar por id de telar
-  const agrupados = {};
-  telares.forEach((telar) => {
-    if (!agrupados[telar.id]) agrupados[telar.id] = [];
-    agrupados[telar.id].push(telar);
-  });
-
-  // Crear array de promedios
-  const telaresPromedio = [];
-  Object.keys(agrupados).forEach((id) => {
-    const grupo = agrupados[id];
-    // Calcular promedios
-    const cmpxTipProm =
-      grupo.reduce((s, t) => s + Number(t.cmpxTip), 0) / grupo.length;
-    const cmpxUpProm =
-      grupo.reduce((s, t) => s + Number(t.cmpxUp), 0) / grupo.length;
-    const eficIpProm =
-      grupo.reduce((s, t) => s + Number(t.eficIp), 0) / grupo.length;
-
-    // Usar datos del primer registro para mostrar info general
-    const telar = grupo[0];
-
-    // Crear objeto con promedios
-    telaresPromedio.push({
-      id: telar.id,
-      turno: telar.turno,
-      articulo: telar.articulo,
-      diseño: telar.diseño,
-      rpm: telar.rpm,
-      cmpxTip: cmpxTipProm,
-      cmpxUp: cmpxUpProm,
-      eficIp: eficIpProm,
-    });
-  });
-
-  // Aplicar filtro de tipo a los promedios
-  let telaresFiltrados = telaresPromedio;
-  if (tipoSeleccionado !== "todos") {
-    switch (tipoSeleccionado) {
-      case "eficiencia_baja":
-        telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.eficIp) < 87
-        );
-        break;
-      case "eficiencia_alta":
-        telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.eficIp) >= 87
-        );
-        break;
-      case "cmpx_alto":
-        telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10
-        );
-        break;
-      case "cmpx_bajo":
-        telaresFiltrados = telaresFiltrados.filter(
-          (telar) => Number(telar.cmpxTip) + Number(telar.cmpxUp) <= 10
-        );
-        break;
-      case "con_ocurrencias":
-        // El filtro de ocurrencias no aplica en la vista de promedio
-        break;
-    }
-  }
-
-  // Aplicar filtro de búsqueda por ID a los promedios
-  if (busquedaIds.length > 0) {
-    telaresFiltrados = telaresFiltrados.filter((telar) =>
-      busquedaIds.includes(String(telar.id))
-    );
-  }
-
-  // Aplicar filtro de búsqueda por código de ocurrencia a los promedios
-  if (busquedaCodigosOcurrencia.length > 0) {
-    telaresFiltrados = telaresFiltrados.filter((telar) => {
-      const hasMatchingOcurrencia = ocurrenciasData.some(
-        (item) =>
-          String(item.telar) === String(telar.id) &&
-          busquedaCodigosOcurrencia.includes(String(item.codigo))
-      );
-      return hasMatchingOcurrencia;
-    });
-  }
-
-  telaresFiltrados.forEach((telar) => {
-    const telarElement = document.createElement("div");
-    telarElement.className = "telar";
-    telarElement.innerHTML = `
-      <div class="telar-status">
-        ${getStatusIndicatorsPromedio(
-          telar.eficIp,
-          telar.cmpxTip,
-          telar.cmpxUp
-        )}
-      </div>
-      <div class="telar-header">
-          <div class="telar-id">${telar.id}</div>
-          <div class="telar-rpm">R.P.M. ${telar.rpm}</div>
-      </div>
-      <div class="telar-info">
-          <div class="info-item">
-              <div class="info-label">ARTICULO</div>
-              <div class="info-value">${telar.articulo}</div>
-          </div>
-          <div class="info-item">
-              <div class="info-label">DISEÑO</div>
-              <div class="info-value">${telar.diseño}</div>
-          </div>
-      </div>
-      <div class="parametros">
-          <div class="parametro cmpx-tip">
-              <div>CMPX T/P</div>
-              <div>${Number(telar.cmpxTip).toFixed(2)}</div>
-          </div>
-          <div class="parametro cmpx-up">
-              <div>CMPX U/P</div>
-              <div>${Number(telar.cmpxUp).toFixed(2)}</div>
-          </div>
-          <div class="parametro efic-ip">
-              <div>EFIC. /P</div>
-              <div>${Number(telar.eficIp).toFixed(2)}</div>
-          </div>
-      </div>
-    `;
-    grid.appendChild(telarElement);
-  });
-}
-
-function getStatusIndicators(telar) {
-  const indicators = [];
-  if (Number(telar.eficIp) < 87) {
-    indicators.push(
-      '<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>'
-    );
-  } else {
-    indicators.push(
-      '<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>'
-    );
-  }
-  if (Number(telar.cmpxTip) + Number(telar.cmpxUp) > 10) {
-    indicators.push(
-      '<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>'
-    );
-  } else {
-    indicators.push(
-      '<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>'
-    );
-  }
-  return indicators.join("");
-}
-
-function getStatusIndicatorsPromedio(eficIpProm, cmpxTipProm, cmpxUpProm) {
-  const indicators = [];
-  if (eficIpProm < 87) {
-    indicators.push(
-      '<span class="telar-status-indicator status-eficiencia-baja" title="Eficiencia baja"></span>'
-    );
-  } else {
-    indicators.push(
-      '<span class="telar-status-indicator status-eficiencia-alta" title="Eficiencia alta"></span>'
-    );
-  }
-  if (cmpxTipProm + cmpxUpProm > 10) {
-    indicators.push(
-      '<span class="telar-status-indicator status-cmpx-alto" title="CMPX alto"></span>'
-    );
-  } else {
-    indicators.push(
-      '<span class="telar-status-indicator status-cmpx-bajo" title="CMPX bajo"></span>'
-    );
-  }
-  return indicators.join("");
-}
-
-function excelDateToYMD(serial) {
-  // Excel date serial to JS Date
-  const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-  const days = Math.floor(serial);
-  const ms = days * 24 * 60 * 60 * 1000;
-  const date = new Date(excelEpoch.getTime() + ms);
-  // Formato YYYYMMDD
-  const yyyy = date.getUTCFullYear();
-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(date.getUTCDate()).padStart(2, "0");
-  return `${yyyy}/${mm}/${dd}`;
+/**
+ * Convierte una fecha en formato serial de Excel a una cadena YYYY/MM/DD.
+ * @param {number} serial - El número de serie de la fecha de Excel.
+ * @returns {string} La fecha formateada.
+ */
+function formatearFechaExcel(serial) {
+  // La época de Excel es el 30 de diciembre de 1899 para compatibilidad con Lotus 1-2-3.
+  const fechaBase = new Date(Date.UTC(1899, 11, 30));
+  fechaBase.setUTCDate(fechaBase.getUTCDate() + serial);
+  const anio = fechaBase.getUTCFullYear();
+  const mes = String(fechaBase.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(fechaBase.getUTCDate()).padStart(2, "0");
+  return `${anio}/${mes}/${dia}`;
 }
