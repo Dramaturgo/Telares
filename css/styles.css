@@ -99,7 +99,13 @@ body {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
-.control-promedio {
+#campoBusquedaArticulo {
+  width: 150px; /* Ancho especÃ­fico para el campo de bÃºsqueda de artÃ­culo */
+}
+
+.control-promedio,
+.control-ocurrencias,
+.control-moda {
   display: flex;
   align-items: center;
   gap: 5px;
