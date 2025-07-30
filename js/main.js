@@ -10,10 +10,16 @@ let datosOcurrencias = [];
 let filtroTurnoActual = "todos";
 // Estado actual del filtro por tipo ('todos', 'eficiencia_baja', etc.).
 let filtroTipoActual = "todos";
+// Flag para controlar el filtro de ocurrencias.
+let filtroOcurrenciasActivo = false;
 // Almacena los IDs de telares para la búsqueda específica.
 let busquedaPorIds = [];
 // Almacena los códigos de ocurrencia para la búsqueda específica.
 let busquedaPorCodigosOcurrencia = [];
+// Almacena el término de búsqueda para el artículo.
+let busquedaPorArticulo = "";
+// Flag para controlar el filtro de moda.
+let filtroModaActivo = false;
 // Almacena la fecha del reporte extraída del archivo.
 let fechaReporte = "";
 // Flag para controlar si se muestra la vista de promedios.
@@ -79,7 +85,7 @@ function aplicarFiltros() {
     );
   }
 
-  // 2. Filtro por Tipo (Eficiencia, CMPX, Ocurrencias)
+  // 2. Filtro por Tipo (Eficiencia, CMPX)
   if (filtroTipoActual !== "todos") {
     switch (filtroTipoActual) {
       case "eficiencia_baja":
@@ -102,16 +108,18 @@ function aplicarFiltros() {
           (telar) => Number(telar.cmpxTrama) + Number(telar.cmpxUrdimbre) <= 10
         );
         break;
-      case "con_ocurrencias":
-        telaresFiltrados = telaresFiltrados.filter((telar) => {
-          return datosOcurrencias.some(
-            (ocurrencia) =>
-              String(ocurrencia.TELAR) === String(telar.id) &&
-              String(ocurrencia.TURNO) === String(telar.turno)
-          );
-        });
-        break;
     }
+  }
+
+  // 3. Filtro por Ocurrencias (si el checkbox está activo)
+  if (filtroOcurrenciasActivo) {
+    telaresFiltrados = telaresFiltrados.filter((telar) => {
+      return datosOcurrencias.some(
+        (ocurrencia) =>
+          String(ocurrencia.TELAR) === String(telar.id) &&
+          String(ocurrencia.TURNO) === String(telar.turno)
+      );
+    });
   }
 
   // 3. Filtro por Búsqueda de IDs
@@ -131,6 +139,33 @@ function aplicarFiltros() {
           busquedaPorCodigosOcurrencia.includes(String(ocurrencia.CODIGO_PARO))
       );
     });
+  }
+
+  // 5. Filtro por Búsqueda de Artículo (prefijo)
+  if (busquedaPorArticulo) {
+    telaresFiltrados = telaresFiltrados.filter((telar) =>
+      String(telar.articulo)
+        .toLowerCase()
+        .startsWith(busquedaPorArticulo.toLowerCase())
+    );
+  }
+
+  // 6. Filtro por Moda de Ocurrencias
+  if (filtroModaActivo) {
+    const codigoModa = calcularModaOcurrencias();
+    if (codigoModa) {
+      telaresFiltrados = telaresFiltrados.filter((telar) => {
+        // Verificar si este telar específico (en este turno) tiene una ocurrencia con el código de moda.
+        return datosOcurrencias.some(
+          (ocurrencia) =>
+            String(ocurrencia.TELAR) === String(telar.id) &&
+            String(ocurrencia.TURNO) === String(telar.turno) &&
+            String(ocurrencia.CODIGO_PARO) === codigoModa
+        );
+      });
+    } else {
+      telaresFiltrados = []; // No hay ocurrencias, no mostrar nada
+    }
   }
 
   return telaresFiltrados;
@@ -174,7 +209,7 @@ function visualizarTelares() {
 
     // Generar HTML para las ocurrencias si el filtro está activo
     let htmlOcurrencias = "";
-    if (filtroTipoActual === "con_ocurrencias" && ocurrenciasDelTelar.length > 0) {
+    if ((filtroOcurrenciasActivo || filtroModaActivo) && ocurrenciasDelTelar.length > 0) {
       htmlOcurrencias = `
         <div class="info-ocurrencias">
           <h4>Ocurrencias:</h4>
@@ -279,12 +314,14 @@ function visualizarPromedioTelares() {
       case "cmpx_bajo":
         telaresPromedio = telaresPromedio.filter((t) => t.cmpxTrama + t.cmpxUrdimbre <= 10);
         break;
-      case "con_ocurrencias":
-        telaresPromedio = telaresPromedio.filter((t) =>
-          datosOcurrencias.some((oc) => String(oc.TELAR) === String(t.id))
-        );
-        break;
     }
+  }
+
+  // Aplicar filtro de ocurrencias si está activo
+  if (filtroOcurrenciasActivo) {
+    telaresPromedio = telaresPromedio.filter((t) =>
+      datosOcurrencias.some((oc) => String(oc.TELAR) === String(t.id))
+    );
   }
 
   if (busquedaPorIds.length > 0) {
@@ -299,6 +336,31 @@ function visualizarPromedioTelares() {
           busquedaPorCodigosOcurrencia.includes(String(oc.CODIGO_PARO))
       )
     );
+  }
+
+  // Aplicar filtro de búsqueda por artículo
+  if (busquedaPorArticulo) {
+    telaresPromedio = telaresPromedio.filter((t) =>
+      String(t.articulo)
+        .toLowerCase()
+        .startsWith(busquedaPorArticulo.toLowerCase())
+    );
+  }
+
+  // Aplicar filtro de moda
+  if (filtroModaActivo) {
+    const codigoModa = calcularModaOcurrencias();
+    if (codigoModa) {
+      const telaresConModa = datosOcurrencias
+        .filter((oc) => String(oc.CODIGO_PARO) === codigoModa)
+        .map((oc) => String(oc.TELAR));
+      const telaresUnicosConModa = [...new Set(telaresConModa)];
+      telaresPromedio = telaresPromedio.filter((t) =>
+        telaresUnicosConModa.includes(String(t.id))
+      );
+    } else {
+      telaresPromedio = [];
+    }
   }
 
   // 4. Renderizar las tarjetas de promedios
@@ -406,13 +468,19 @@ function manejarArchivo(archivo) {
 function reiniciarFiltros() {
   filtroTurnoActual = "todos";
   filtroTipoActual = "todos";
+  filtroOcurrenciasActivo = false;
+  filtroModaActivo = false;
   busquedaPorIds = [];
   busquedaPorCodigosOcurrencia = [];
+  busquedaPorArticulo = "";
 
   document.getElementById("selectorFiltroTurno").value = "todos";
   document.getElementById("selectorFiltroTipo").value = "todos";
   document.getElementById("campoBusquedaTelar").value = "";
+  document.getElementById("campoBusquedaArticulo").value = "";
   document.getElementById("campoBusquedaOcurrencia").value = "";
+  document.getElementById("checkboxOcurrencias").checked = false;
+  document.getElementById("checkboxModa").checked = false;
   
   actualizarVisualizacion();
 }
@@ -425,8 +493,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const selectorFiltroTurno = document.getElementById("selectorFiltroTurno");
   const selectorFiltroTipo = document.getElementById("selectorFiltroTipo");
   const campoBusquedaTelar = document.getElementById("campoBusquedaTelar");
+  const campoBusquedaArticulo = document.getElementById("campoBusquedaArticulo");
   const campoBusquedaOcurrencia = document.getElementById("campoBusquedaOcurrencia");
   const checkboxPromedio = document.getElementById("checkboxPromedio");
+  const checkboxOcurrencias = document.getElementById("checkboxOcurrencias");
+  const checkboxModa = document.getElementById("checkboxModa");
   const botonImprimir = document.getElementById("botonImprimir");
 
   // --- Carga de Datos desde Session Storage (si existen) ---
@@ -482,9 +553,22 @@ document.addEventListener("DOMContentLoaded", function () {
   if (selectorFiltroTipo) {
     selectorFiltroTipo.addEventListener("change", function () {
       filtroTipoActual = this.value;
-      // Muestra u oculta el campo de búsqueda de ocurrencias
-      campoBusquedaOcurrencia.style.display = this.value === "con_ocurrencias" ? "inline-block" : "none";
-      if (this.value !== "con_ocurrencias") {
+      actualizarVisualizacion();
+    });
+  }
+
+  // Checkbox para filtro de Ocurrencias
+  if (checkboxOcurrencias) {
+    checkboxOcurrencias.addEventListener("change", function () {
+      filtroOcurrenciasActivo = this.checked;
+      campoBusquedaOcurrencia.style.display = this.checked ? "inline-block" : "none";
+      
+      if (this.checked) {
+        checkboxPromedio.disabled = true;
+        checkboxModa.disabled = true;
+      } else {
+        checkboxPromedio.disabled = false;
+        checkboxModa.disabled = false;
         campoBusquedaOcurrencia.value = "";
         busquedaPorCodigosOcurrencia = [];
       }
@@ -497,6 +581,29 @@ document.addEventListener("DOMContentLoaded", function () {
     campoBusquedaTelar.addEventListener("input", function () {
       const valor = this.value.trim();
       busquedaPorIds = valor ? valor.split(",").map((id) => id.trim()) : [];
+      actualizarVisualizacion();
+    });
+  }
+
+  // Búsqueda por Artículo
+  if (campoBusquedaArticulo) {
+    campoBusquedaArticulo.addEventListener("input", function () {
+      busquedaPorArticulo = this.value.trim();
+      actualizarVisualizacion();
+    });
+  }
+
+  // Checkbox para filtro de Moda
+  if (checkboxModa) {
+    checkboxModa.addEventListener("change", function () {
+      filtroModaActivo = this.checked;
+      if (this.checked) {
+        checkboxPromedio.disabled = true;
+        checkboxOcurrencias.disabled = true;
+      } else {
+        checkboxPromedio.disabled = false;
+        checkboxOcurrencias.disabled = false;
+      }
       actualizarVisualizacion();
     });
   }
@@ -514,6 +621,13 @@ document.addEventListener("DOMContentLoaded", function () {
   if (checkboxPromedio) {
     checkboxPromedio.addEventListener("change", function () {
       vistaPromedioActivada = this.checked;
+      if (this.checked) {
+        checkboxOcurrencias.disabled = true;
+        checkboxModa.disabled = true;
+      } else {
+        checkboxOcurrencias.disabled = false;
+        checkboxModa.disabled = false;
+      }
       actualizarVisualizacion();
     });
   }
@@ -557,6 +671,33 @@ document.addEventListener("DOMContentLoaded", function () {
 // =================================================================================
 // Funciones Utilitarias
 // =================================================================================
+
+/**
+ * Calcula el código de paro más frecuente (moda) en el conjunto de datos de ocurrencias.
+ * @returns {string|null} El código de paro más frecuente o null si no hay ocurrencias.
+ */
+function calcularModaOcurrencias() {
+  if (datosOcurrencias.length === 0) {
+    return null;
+  }
+
+  const conteoCodigos = datosOcurrencias.reduce((acc, ocurrencia) => {
+    const codigo = String(ocurrencia.CODIGO_PARO);
+    acc[codigo] = (acc[codigo] || 0) + 1;
+    return acc;
+  }, {});
+
+  let moda = null;
+  let maxConteo = 0;
+  for (const codigo in conteoCodigos) {
+    if (conteoCodigos[codigo] > maxConteo) {
+      maxConteo = conteoCodigos[codigo];
+      moda = codigo;
+    }
+  }
+
+  return moda;
+}
 
 /**
  * Convierte una fecha en formato serial de Excel a una cadena YYYY/MM/DD.
