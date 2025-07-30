@@ -37,11 +37,18 @@
       <!-- Panel de controles y filtros -->
       <div class="controles">
         <div id="zonaArrastre">
-          <p>Arrastra y suelta un archivo .xlsm aquí o haz clic para seleccionar</p>
-          <input type="file" id="inputArchivo" accept=".xlsm" style="display: none" />
+          <p>
+            Arrastra y suelta un archivo .xlsm aquí o haz clic para seleccionar
+          </p>
+          <input
+            type="file"
+            id="inputArchivo"
+            accept=".xlsm"
+            style="display: none"
+          />
         </div>
-        
-        <label for="selectorFiltroTurno">Filtrar por Turno:</label>
+
+        <label for="selectorFiltroTurno">Filtro x Turno:</label>
         <select id="selectorFiltroTurno">
           <option value="todos">Todos los Turnos</option>
           <option value="1">Mañana</option>
@@ -49,23 +56,47 @@
           <option value="3">Noche</option>
         </select>
 
-        <label for="selectorFiltroTipo">Filtrar por Tipo:</label>
+        <label for="selectorFiltroTipo">Filtro x Tipo:</label>
         <select id="selectorFiltroTipo">
           <option value="todos">Todos los Tipos</option>
           <option value="eficiencia_alta">Eficiencia ≥ 87</option>
           <option value="eficiencia_baja">Eficiencia < 87</option>
           <option value="cmpx_alto">CMPX > 10</option>
           <option value="cmpx_bajo">CMPX ≤ 10</option>
-          <option value="con_ocurrencias">Con Ocurrencias</option>
         </select>
 
-        <input type="text" id="campoBusquedaTelar" placeholder="ID de Telar (ej: 101,102)" />
-        
-        <input type="text" id="campoBusquedaOcurrencia" placeholder="Cód. Ocurrencia (ej: 409,12)" style="display: none;" />
+        <input
+          type="text"
+          id="campoBusquedaTelar"
+          placeholder="ID de Telar (ej: 101,102)"
+        />
+
+        <input
+          type="text"
+          id="campoBusquedaArticulo"
+          placeholder="Buscar x artículo"
+        />
+
+        <input
+          type="text"
+          id="campoBusquedaOcurrencia"
+          placeholder="Cód. Ocurrencia (ej: 409,12)"
+          style="display: none"
+        />
 
         <div class="control-promedio">
           <input type="checkbox" id="checkboxPromedio" />
-          <label for="checkboxPromedio">Ver Promedios</label>
+          <label for="checkboxPromedio">Promedio</label>
+        </div>
+
+        <div class="control-ocurrencias">
+          <input type="checkbox" id="checkboxOcurrencias" />
+          <label for="checkboxOcurrencias">Paros</label>
+        </div>
+
+        <div class="control-moda">
+          <input type="checkbox" id="checkboxModa" />
+          <label for="checkboxModa">Paro Frecuente</label>
         </div>
 
         <button id="botonImprimir" class="btn-imprimir">Imprimir</button>
